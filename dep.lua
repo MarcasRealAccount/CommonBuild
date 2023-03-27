@@ -1,0 +1,1 @@
+externalincludedirs({ common:scriptDir() .. "/Common/" })
