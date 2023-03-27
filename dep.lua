@@ -1,1 +1,1 @@
-externalincludedirs({ common:scriptDir() .. "/Common/" })
+externalincludedirs({ common:scriptDir() .. "/CommonBuild/" })
