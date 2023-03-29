@@ -1,5 +1,6 @@
 # Output
 /Bin/
+/build/
 
 # Visual Studio
 /.vs/

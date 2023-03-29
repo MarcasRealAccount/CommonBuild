@@ -131,9 +131,9 @@ namespace CommonBuild
 	static constexpr bool c_IsSystemMacOSX  = c_System.hasFlag(BuildSystems::MacOSX);
 	static constexpr bool c_IsSystemLinux   = c_System.hasFlag(BuildSystems::Linux);
 
-	static constexpr bool c_IsToolsetMSVC  = c_Toolste.hasFlag(BuildToolsets::MSVC);
-	static constexpr bool c_IsToolsetClang = c_Toolste.hasFlag(BuildToolsets::Clang);
-	static constexpr bool c_IsToolsetGCC   = c_Toolste.hasFlag(BuildToolsets::GCC);
+	static constexpr bool c_IsToolsetMSVC  = c_Toolset.hasFlag(BuildToolsets::MSVC);
+	static constexpr bool c_IsToolsetClang = c_Toolset.hasFlag(BuildToolsets::Clang);
+	static constexpr bool c_IsToolsetGCC   = c_Toolset.hasFlag(BuildToolsets::GCC);
 
 	static constexpr bool c_IsPlatformAMD64 = c_Platform.hasFlag(BuildPlatforms::AMD64);
 } // namespace CommonBuild
