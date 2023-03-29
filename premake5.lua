@@ -13,7 +13,8 @@ workspace("CommonBuild")
 		warnings("Extra")
 
 		kind("ConsoleApp")
-		common:outDirs()
+		targetdir("%{wks.location}/CommonBuild/%{cfg.buildcfg}")
+		objdir("%{wks.location}/CommonBuild/%{cfg.buildcfg}")
 
 		includedirs({ "CommonBuild/" })
 		files({ "CommonBuild/**" })
