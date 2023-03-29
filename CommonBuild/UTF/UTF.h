@@ -61,7 +61,6 @@ namespace UTF
 		for (; i < 32; ++i)
 		{
 			std::uint32_t word = *reinterpret_cast<const std::uint32_t*>(utf16 + i);
-			std::uint32_t codepoint;
 			switch (LUTs::UTF166BitClass[(word >> 10) & 0x3F])
 			{
 			case 1: ++j; break;
@@ -188,7 +187,6 @@ namespace UTF
 		for (; i < 32; ++i)
 		{
 			std::uint32_t word = *reinterpret_cast<const std::uint32_t*>(utf16 + i);
-			std::uint32_t codepoint;
 			switch (LUTs::UTF166BitClass[(word >> 10) & 0x3F])
 			{
 			case 1:
