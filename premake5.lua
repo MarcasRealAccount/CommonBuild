@@ -1,7 +1,7 @@
 workspace("CommonBuild")
 	location("build/")
-	common:setConfigsAndPlatforms()
-	common:addCoreDefines()
+	common:addConfigs()
+	common:addBuildDefines()
 
 	cppdialect("C++20")
 	rtti("Off")
