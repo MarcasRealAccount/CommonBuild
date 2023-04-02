@@ -318,7 +318,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 64, slowIterations);
 			result += UTF8ToUTF32RequiredSizeBlock(reinterpret_cast<const std::uint8_t*>(block), &read);
 		}
@@ -341,7 +341,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 64, slowIterations);
 			result += UTF8ToUTF16RequiredSizeBlock(reinterpret_cast<const std::uint8_t*>(block), &read);
 		}
@@ -364,7 +364,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 64, slowIterations);
 			result += UTF8ToUTF16RequiredSizeBlock(reinterpret_cast<const std::uint8_t*>(block), &read);
 		}
@@ -387,7 +387,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 32, slowIterations);
 			result += UTF16ToUTF32RequiredSizeBlock(reinterpret_cast<const std::uint16_t*>(block), &read);
 		}
@@ -410,7 +410,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 32, slowIterations);
 			result += UTF16ToUTF8RequiredSizeBlock(reinterpret_cast<const std::uint16_t*>(block), &read);
 		}
@@ -433,7 +433,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 32, slowIterations);
 			result += UTF16ToUTF8RequiredSizeBlock(reinterpret_cast<const std::uint16_t*>(block), &read);
 		}
@@ -456,7 +456,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 16, slowIterations);
 			result += UTF32ToUTF16RequiredSizeBlock(reinterpret_cast<const std::uint32_t*>(block), &read);
 		}
@@ -479,7 +479,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 16, slowIterations);
 			result += UTF32ToUTF8RequiredSizeBlock(reinterpret_cast<const std::uint32_t*>(block), &read);
 		}
@@ -502,7 +502,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 64, slowIterations);
 			result += UTF8ToUTF32RequiredSizeBlock(reinterpret_cast<const std::uint8_t*>(block), &read);
 		}
@@ -548,7 +548,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 32, slowIterations);
 			result += UTF16ToUTF32RequiredSizeBlock(reinterpret_cast<const std::uint16_t*>(block), &read);
 		}
@@ -571,7 +571,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 32, slowIterations);
 			result += UTF16ToUTF8RequiredSizeBlock(reinterpret_cast<const std::uint16_t*>(block), &read);
 		}
@@ -594,7 +594,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 16, slowIterations);
 			result += UTF32ToUTF16RequiredSizeBlock(reinterpret_cast<const std::uint32_t*>(block), &read);
 		}
@@ -617,7 +617,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 16, slowIterations);
 			result += UTF32ToUTF8RequiredSizeBlock(reinterpret_cast<const std::uint32_t*>(block), &read);
 		}
@@ -643,7 +643,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 32, slowIterations);
 			UTF8ToUTF16Block(pOutput + offset, reinterpret_cast<const std::uint8_t*>(block), &read, &written);
 			offset += written;
@@ -672,7 +672,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 32, slowIterations);
 			UTF8ToUTF16Block(pOutput + offset, reinterpret_cast<const std::uint8_t*>(block), &read, &written);
 			offset += written;
@@ -701,7 +701,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 64, slowIterations);
 			UTF8ToUTF32Block(pOutput + offset, reinterpret_cast<const std::uint8_t*>(block), &read, &written);
 			offset += written;
@@ -730,7 +730,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 32, slowIterations);
 			UTF16ToUTF32Block(pOutput + offset, reinterpret_cast<const std::uint16_t*>(block), &read, &written);
 			offset += written;
@@ -759,7 +759,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 32, slowIterations);
 			UTF16ToUTF8Block(pOutput + offset, reinterpret_cast<const std::uint16_t*>(block), &read, &written);
 			offset += written;
@@ -788,7 +788,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 32, slowIterations);
 			UTF16ToUTF8Block(pOutput + offset, reinterpret_cast<const std::uint16_t*>(block), &read, &written);
 			offset += written;
@@ -817,7 +817,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 16, slowIterations);
 			UTF32ToUTF16Block(pOutput + offset, reinterpret_cast<const std::uint32_t*>(block), &read, &written);
 			offset += written;
@@ -846,7 +846,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 16, slowIterations);
 			UTF32ToUTF8Block(pOutput + offset, reinterpret_cast<const std::uint32_t*>(block), &read, &written);
 			offset += written;
@@ -875,7 +875,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 64, slowIterations);
 			UTF8ToUTF32Block(pOutput + offset, reinterpret_cast<const std::uint8_t*>(block), &read, &written);
 			offset += written;
@@ -904,7 +904,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 32, slowIterations);
 			UTF8ToUTF16Block(pOutput + offset, reinterpret_cast<const std::uint8_t*>(block), &read, &written);
 			offset += written;
@@ -933,7 +933,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 32, slowIterations);
 			UTF16ToUTF32Block(pOutput + offset, reinterpret_cast<const std::uint16_t*>(block), &read, &written);
 			offset += written;
@@ -962,7 +962,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 32, slowIterations);
 			UTF16ToUTF8Block(pOutput + offset, reinterpret_cast<const std::uint16_t*>(block), &read, &written);
 			offset += written;
@@ -991,7 +991,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 16, slowIterations);
 			UTF32ToUTF16Block(pOutput + offset, reinterpret_cast<const std::uint32_t*>(block), &read, &written);
 			offset += written;
@@ -1020,7 +1020,7 @@ namespace UTF
 
 		if (slowIterations)
 		{
-			alignas(64) std::uint8_t block[64] {};
+			alignas(64) std::uint8_t block[68] {};
 			std::memcpy(block, pStr + fastIterations * 16, slowIterations);
 			UTF32ToUTF8Block(pOutput + offset, reinterpret_cast<const std::uint32_t*>(block), &read, &written);
 			offset += written;
