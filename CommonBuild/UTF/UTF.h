@@ -649,7 +649,7 @@ namespace UTF
 			offset += written;
 		}
 
-		output.resize(offset);
+		output.resize(output.find_last_not_of(u'\0', offset) + 1);
 
 		return output;
 	}
@@ -678,7 +678,7 @@ namespace UTF
 			offset += written;
 		}
 
-		output.resize(offset);
+		output.resize(output.find_last_not_of(L'\0', offset) + 1);
 
 		return output;
 	}
@@ -707,7 +707,7 @@ namespace UTF
 			offset += written;
 		}
 
-		output.resize(offset);
+		output.resize(output.find_last_not_of(U'\0', offset) + 1);
 
 		return output;
 	}
@@ -736,7 +736,7 @@ namespace UTF
 			offset += written;
 		}
 
-		output.resize(offset);
+		output.resize(output.find_last_not_of(U'\0', offset) + 1);
 
 		return output;
 	}
@@ -765,7 +765,7 @@ namespace UTF
 			offset += written;
 		}
 
-		output.resize(offset);
+		output.resize(output.find_last_not_of(u8'\0', offset) + 1);
 
 		return output;
 	}
@@ -794,7 +794,7 @@ namespace UTF
 			offset += written;
 		}
 
-		output.resize(offset);
+		output.resize(output.find_last_not_of('\0', offset) + 1);
 
 		return output;
 	}
@@ -823,7 +823,7 @@ namespace UTF
 			offset += written;
 		}
 
-		output.resize(offset);
+		output.resize(output.find_last_not_of(L'\0', offset) + 1);
 
 		return output;
 	}
@@ -852,7 +852,7 @@ namespace UTF
 			offset += written;
 		}
 
-		output.resize(offset);
+		output.resize(output.find_last_not_of('\0', offset) + 1);
 
 		return output;
 	}
@@ -881,7 +881,7 @@ namespace UTF
 			offset += written;
 		}
 
-		output.resize(offset);
+		output.resize(output.find_last_not_of(U'\0', offset) + 1);
 
 		return output;
 	}
@@ -910,7 +910,7 @@ namespace UTF
 			offset += written;
 		}
 
-		output.resize(offset);
+		output.resize(output.find_last_not_of(u'\0', offset) + 1);
 
 		return output;
 	}
@@ -939,7 +939,7 @@ namespace UTF
 			offset += written;
 		}
 
-		output.resize(offset);
+		output.resize(output.find_last_not_of(U'\0', offset) + 1);
 
 		return output;
 	}
@@ -968,7 +968,7 @@ namespace UTF
 			offset += written;
 		}
 
-		output.resize(offset);
+		output.resize(output.find_last_not_of(u8'\0', offset) + 1);
 
 		return output;
 	}
@@ -997,7 +997,7 @@ namespace UTF
 			offset += written;
 		}
 
-		output.resize(offset);
+		output.resize(output.find_last_not_of(u'\0', offset) + 1);
 
 		return output;
 	}
@@ -1026,7 +1026,7 @@ namespace UTF
 			offset += written;
 		}
 
-		output.resize(offset);
+		output.resize(output.find_last_not_of(u8'\0', offset) + 1);
 
 		return output;
 	}
