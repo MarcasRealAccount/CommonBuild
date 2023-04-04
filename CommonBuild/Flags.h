@@ -33,7 +33,7 @@ namespace CommonBuild
 							HasEquals<T> && HasLessThan<T> && HasGreaterThan<T>;
 	} // namespace Detail
 
-	template <Detail::Flaggable T = std::uint32_t>
+	template <Detail::Flaggable T = std::uint32_t, std::uint64_t UID = 0>
 	struct Flags
 	{
 	public:
