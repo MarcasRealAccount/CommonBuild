@@ -13,8 +13,9 @@ namespace Testing
 	void PushGroup(std::string_view name);
 	void PopGroup();
 
-	void Test(std::string_view name, TestFunc test, TestOnEndFunc onEnd = nullptr);
-	void TimedTest(std::string_view name, double baseline, TestFunc test, TestOnEndFunc onEnd = nullptr);
+	void   Test(std::string_view name, TestFunc test, TestOnEndFunc onEnd = nullptr);
+	void   TimedTest(std::string_view name, double baseline, TestFunc test, TestOnEndFunc onEnd = nullptr);
+	double TimedBasline(TestFunc test);
 
 	void Assert(bool statement);
 	void Fail();

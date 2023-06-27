@@ -67,7 +67,7 @@ namespace Common
 
 		constexpr bool HasFlag(Flags flags) const
 		{
-			return (Value & flags.Value) == flags;
+			return (*this & flags) == flags;
 		}
 
 		constexpr operator bool()
@@ -95,7 +95,7 @@ namespace Common
 	constexpr Flags& operator##Op##=(RhsType RhsName) \
 	{                                                 \
 		Value = Value Op Rhs;                         \
-		return *this                                  \
+		return *this;                                 \
 	}
 
 		UNARY_OP(~);

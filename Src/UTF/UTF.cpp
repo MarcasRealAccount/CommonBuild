@@ -2,15 +2,15 @@
 
 namespace UTF
 {
-	CalcReqSizeImplF s_CalcReqSizeImpls[c_MaxImpls];
-	ConvBlockImplF   s_ConvBlockImpls[c_MaxImpls];
+	CalcReqSizeImplF s_CalcReqSizeImpls[c_EncodingCount][c_EncodingCount][c_ImplCount];
+	ConvBlockImplF   s_ConvBlockImpls[c_EncodingCount][c_EncodingCount][c_ImplCount];
 
 	static struct Initializer
 	{
 		void SetFuncs(EEncoding from, EEncoding to, EImpl impl, CalcReqSizeImplF calcFunc, ConvBlockImplF convFunc)
 		{
-			s_CalcReqSizeImpls[static_cast<std::uint8_t>(from) * c_EncodingCount * c_EncodingCount + static_cast<std::uint8_t>(to) * c_EncodingCount + static_cast<std::uint8_t>(impl)] = calcFunc;
-			s_ConvBlockImpls[static_cast<std::uint8_t>(from) * c_EncodingCount * c_EncodingCount + static_cast<std::uint8_t>(to) * c_EncodingCount + static_cast<std::uint8_t>(impl)]   = convFunc;
+			s_CalcReqSizeImpls[static_cast<std::uint8_t>(from)][static_cast<std::uint8_t>(to)][static_cast<std::uint8_t>(impl)] = calcFunc;
+			s_ConvBlockImpls[static_cast<std::uint8_t>(from)][static_cast<std::uint8_t>(to)][static_cast<std::uint8_t>(impl)]   = convFunc;
 		}
 
 		Initializer()

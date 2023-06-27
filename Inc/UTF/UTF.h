@@ -52,9 +52,8 @@ namespace UTF
 	};
 
 	static constexpr std::uint8_t c_ImplCount = 2;
-	static constexpr std::uint8_t c_MaxImpls  = c_EncodingCount * c_EncodingCount * c_ImplCount;
-	extern CalcReqSizeImplF       s_CalcReqSizeImpls[c_MaxImpls];
-	extern ConvBlockImplF         s_ConvBlockImpls[c_MaxImpls];
+	extern CalcReqSizeImplF       s_CalcReqSizeImpls[c_EncodingCount][c_EncodingCount][c_ImplCount];
+	extern ConvBlockImplF         s_ConvBlockImpls[c_EncodingCount][c_EncodingCount][c_ImplCount];
 
 	EImpl GetFastestImpl();
 
@@ -65,7 +64,7 @@ namespace UTF
 		if (impl == EImpl::Fastest)
 			impl = GetFastestImpl();
 
-		auto callback = s_CalcReqSizeImpls[static_cast<std::uint8_t>(From) * c_EncodingCount * c_EncodingCount + static_cast<std::uint8_t>(To) * c_EncodingCount + static_cast<std::uint8_t>(impl)];
+		auto callback = s_CalcReqSizeImpls[static_cast<std::uint8_t>(From)][static_cast<std::uint8_t>(To)][static_cast<std::uint8_t>(impl)];
 		if (!callback)
 			return EError::MissingImpl;
 		return callback(input, inputSize, requiredSize);
@@ -78,7 +77,7 @@ namespace UTF
 		if (impl == EImpl::Fastest)
 			impl = GetFastestImpl();
 
-		auto callback = s_ConvBlockImpls[static_cast<std::uint8_t>(From) * c_EncodingCount * c_EncodingCount + static_cast<std::uint8_t>(To) * c_EncodingCount + static_cast<std::uint8_t>(impl)];
+		auto callback = s_ConvBlockImpls[static_cast<std::uint8_t>(From)][static_cast<std::uint8_t>(To)][static_cast<std::uint8_t>(impl)];
 		if (!callback)
 			return EError::MissingImpl;
 		return callback(input, output, inputSize, outputSize);

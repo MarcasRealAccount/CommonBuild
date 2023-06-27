@@ -211,6 +211,7 @@ namespace UTF::Generic
 			char32_t     word      = *reinterpret_cast<const char32_t*>(inputBuf);
 			std::uint8_t size      = LUTs::UTF8_6BitClass[(word >> 3) & 0x3F];
 			char32_t     codepoint = 0;
+			bool         errored   = false;
 			switch (size)
 			{
 			case 1:
@@ -240,8 +241,15 @@ namespace UTF::Generic
 				i        += 4;
 				break;
 			default:
-				return EError::InvalidLeading;
+				if (i != 0)
+					return EError::InvalidLeading;
+				++inputBuf;
+				++i;
+				errored = true;
+				break;
 			}
+			if (errored)
+				continue;
 			if (codepoint > 0xFFFF)
 			{
 				codepoint    = codepoint - 0x1'0000;
@@ -298,7 +306,8 @@ namespace UTF::Generic
 				i        += 4;
 				break;
 			default:
-				return EError::InvalidLeading;
+				if (i != 0)
+					return EError::InvalidLeading;
 			}
 			outputSize += 4;
 			++outputBuf;
@@ -356,7 +365,8 @@ namespace UTF::Generic
 				i           += 4;
 				break;
 			default:
-				return EError::InvalidLeading;
+				if (i != 0)
+					return EError::InvalidLeading;
 			}
 		}
 		return EError::Success;
@@ -388,7 +398,8 @@ namespace UTF::Generic
 				i          += 4;
 				break;
 			default:
-				return EError::InvalidLeading;
+				if (i != 0)
+					return EError::InvalidLeading;
 			}
 		}
 		return EError::Success;

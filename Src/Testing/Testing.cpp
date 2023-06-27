@@ -128,6 +128,7 @@ namespace Testing
 
 		ETestResult result = ETestResult::Success;
 		double      time   = 0.0;
+		std::size_t iters  = 0;
 
 		try
 		{
@@ -136,12 +137,13 @@ namespace Testing
 			{
 				using namespace std::chrono_literals;
 				auto cur = Clock::now();
-				if ((cur - start) < 100ms)
+				if ((cur - start) >= 100ms)
 					break;
 				test();
+				++iters;
 			}
 			auto end = Clock::now();
-			time     = std::chrono::duration_cast<std::chrono::duration<double>>(end - start).count();
+			time     = std::chrono::duration_cast<std::chrono::duration<double, std::nano>>(end - start).count() / iters;
 		}
 		catch (ETestResult res)
 		{
@@ -173,7 +175,6 @@ namespace Testing
 				str << "\033[32m";
 			}
 			str << std::scientific << std::setprecision(3) << time << '/' << std::scientific << std::setprecision(3) << baseline << ": \033[39m" << name << '\n';
-			std::cout << str.str();
 			break;
 		}
 		case ETestResult::Fail:
@@ -187,6 +188,23 @@ namespace Testing
 
 		if (onEnd)
 			onEnd();
+	}
+
+	double TimedBasline(TestFunc test)
+	{
+		using Clock       = std::chrono::high_resolution_clock;
+		std::size_t iters = 0;
+		auto        start = Clock::now();
+		while (true)
+		{
+			using namespace std::chrono_literals;
+			auto cur = Clock::now();
+			if ((cur - start) >= 100ms)
+				break;
+			test();
+		}
+		auto end = Clock::now();
+		return std::chrono::duration_cast<std::chrono::duration<double, std::nano>>(end - start).count() / iters;
 	}
 
 	void Assert(bool statement)
