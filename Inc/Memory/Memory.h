@@ -2,8 +2,37 @@
 
 #include <cstddef>
 
+#include <concepts>
+
 namespace Memory
 {
+	namespace Details
+	{
+		template <class T>
+		concept Numeric = std::integral<T> || std::floating_point<T>;
+	}
+
+	template <Details::Numeric T1, Details::Numeric T2>
+	constexpr auto AlignCeil(T1 value, T2 alignment)
+	{
+		auto mask = alignment - 1;
+		auto val  = value + mask;
+		if ((alignment & mask) == 0)
+			return val & ~mask;
+		else
+			return val / alignment * alignment;
+	}
+
+	template <Details::Numeric T1, Details::Numeric T2>
+	constexpr auto AlignFloor(T1 value, T2 alignment)
+	{
+		auto mask = alignment - 1;
+		if ((alignment & mask) == 0)
+			return value & ~mask;
+		else
+			return value / alignment * alignment;
+	}
+
 	void* AlignedMalloc(std::size_t alignment, std::size_t size);
 	void* AlignedZalloc(std::size_t alignment, std::size_t size);
 	void* AlignedCalloc(std::size_t alignment, std::size_t count, std::size_t size);

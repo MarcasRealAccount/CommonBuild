@@ -34,7 +34,7 @@ namespace Memory
 	void* AlignedCalloc(std::size_t alignment, std::size_t count, std::size_t size)
 	{
 		if constexpr (Common::c_IsSystemWindows)
-			return AlignedMalloc(alignment, count * ((size + alignment - 1) / alignment * alignment));
+			return AlignedMalloc(alignment, count * AlignCeil(size, alignment));
 		else
 			return nullptr;
 	}
@@ -43,7 +43,7 @@ namespace Memory
 	{
 		if constexpr (Common::c_IsSystemWindows)
 		{
-			std::size_t allocSize = count * ((size + alignment - 1) / alignment * alignment);
+			std::size_t allocSize = count * AlignCeil(size, alignment);
 			void*       ptr       = AlignedMalloc(alignment, allocSize);
 			if (ptr)
 				std::memset(ptr, 0, allocSize);
@@ -81,7 +81,7 @@ namespace Memory
 	void* AlignedRCalloc(void* ptr, std::size_t alignment, std::size_t newCount, std::size_t newSize)
 	{
 		if constexpr (Common::c_IsSystemWindows)
-			return AlignedRMalloc(ptr, alignment, newCount * ((newSize + alignment - 1) / alignment * alignment));
+			return AlignedRMalloc(ptr, alignment, newCount * AlignCeil(newSize, alignment));
 		else
 			return nullptr;
 	}
@@ -90,8 +90,8 @@ namespace Memory
 	{
 		if constexpr (Common::c_IsSystemWindows)
 		{
-			std::size_t allocSize = newCount * ((newSize + alignment - 1) / alignment * alignment);
-			void*       ptr       = AlignedRCalloc(ptr, alignment, allocSize);
+			std::size_t allocSize = newCount * AlignCeil(newSize, alignment);
+			void*       ptr       = AlignedRMalloc(ptr, alignment, allocSize);
 			if (ptr)
 				std::memset(ptr, 0, allocSize);
 			return ptr;
