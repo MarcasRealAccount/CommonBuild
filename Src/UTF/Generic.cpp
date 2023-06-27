@@ -241,7 +241,7 @@ namespace UTF::Generic
 				i        += 4;
 				break;
 			default:
-				if (i != 0)
+				if (i >= 3)
 					return EError::InvalidLeading;
 				++inputBuf;
 				++i;
@@ -306,8 +306,11 @@ namespace UTF::Generic
 				i        += 4;
 				break;
 			default:
-				if (i != 0)
+				if (i >= 3)
 					return EError::InvalidLeading;
+				++inputBuf;
+				++i;
+				continue;
 			}
 			outputSize += 4;
 			++outputBuf;
@@ -365,8 +368,10 @@ namespace UTF::Generic
 				i           += 4;
 				break;
 			default:
-				if (i != 0)
+				if (i >= 2)
 					return EError::InvalidLeading;
+				++i;
+				++inputBuf;
 			}
 		}
 		return EError::Success;
@@ -398,8 +403,10 @@ namespace UTF::Generic
 				i          += 4;
 				break;
 			default:
-				if (i != 0)
+				if (i >= 2)
 					return EError::InvalidLeading;
+				++i;
+				++inputBuf;
 			}
 		}
 		return EError::Success;

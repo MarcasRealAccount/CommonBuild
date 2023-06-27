@@ -105,14 +105,23 @@ namespace UTF
 
 		std::size_t firstBytes, lastBytes;
 		Details::CalcIters(reinterpret_cast<std::uintptr_t>(inputBuf), inputSize, alignof(InputBlock), firstBytes, lastBytes);
+		std::size_t fastIters = (inputSize - firstBytes - lastBytes) / alignof(InputBlock);
 
 		InputBlock  inputBlock;
 		OutputBlock outputBlock;
 		std::size_t bytesWritten = 0;
 		if (firstBytes > 0)
 		{
-			std::memcpy(&inputBlock, reinterpret_cast<const std::uint8_t*>(inputBuf) + inputOff, firstBytes);
-			std::memset(reinterpret_cast<std::uint8_t*>(&inputBlock) + firstBytes, 0, sizeof(inputBlock) - firstBytes);
+			std::size_t firstPadded = firstBytes;
+			if (fastIters + lastBytes > 0)
+			{
+				if constexpr (From == EEncoding::UTF8)
+					firstPadded += std::min<std::size_t>(3, fastIters + lastBytes);
+				else if constexpr (From == EEncoding::UTF16)
+					firstPadded += std::min<std::size_t>(2, fastIters + lastBytes);
+			}
+			std::memcpy(&inputBlock, reinterpret_cast<const std::uint8_t*>(inputBuf) + inputOff, firstPadded);
+			std::memset(reinterpret_cast<std::uint8_t*>(&inputBlock) + firstPadded, 0, sizeof(inputBlock) - firstPadded);
 			error = ConvBlock<From, To>(inputBlock, outputBlock, firstBytes, bytesWritten, impl);
 			if (error != EError::Success)
 			{
@@ -124,7 +133,6 @@ namespace UTF
 			outputOff += bytesWritten;
 		}
 
-		std::size_t fastIters = (inputSize - firstBytes - lastBytes) / alignof(InputBlock);
 		for (std::size_t i = 0; i < fastIters; ++i)
 		{
 			error = ConvBlock<From, To>(*reinterpret_cast<const InputBlock*>(reinterpret_cast<const std::uint8_t*>(inputBuf) + inputOff),
@@ -159,7 +167,7 @@ namespace UTF
 		std::basic_string<C1> output;
 		output.resize(outputSize / sizeof(Details::CharTypeT<To>));
 		std::memcpy(output.data(), outputBuf, outputSize);
-		Memory::AlignedFree(outputBuf);
+		Memory::AlignedFree(outputBuf, alignof(OutputBlock));
 		return output;
 	}
 } // namespace UTF
