@@ -16,8 +16,11 @@ workspace("CommonBuild")
 		targetdir("%{wks.location}/CommonBuild/%{cfg.buildcfg}")
 		objdir("%{wks.location}/CommonBuild/%{cfg.buildcfg}")
 
-		includedirs({ "CommonBuild/" })
-		files({ "CommonBuild/**" })
+		includedirs({ "Inc/" })
+		files({
+			"Inc/**",
+			"Src/**"
+		})
 		removefiles({ "*.DS_Store" })
 
 		common:addActions()
