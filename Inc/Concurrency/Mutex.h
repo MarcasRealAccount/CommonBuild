@@ -7,28 +7,28 @@
 namespace Concurrency
 {
 	template <class T>
-	concept MutexC = requires {
+	concept MutexC = requires(T t) {
 		{
-			T::Lock()
-		} -> std::same_as<void>;
+			t.Lock()
+		} noexcept -> std::same_as<void>;
 		{
-			T::TryLock()
-		} -> std::same_as<bool>;
+			t.TryLock()
+		} noexcept -> std::same_as<bool>;
 		{
-			T::Unlock()
-		} -> std::same_as<void>;
+			t.Unlock()
+		} noexcept -> std::same_as<void>;
 	};
 	template <class T>
-	concept SharedMutexC = MutexC<T> && requires {
+	concept SharedMutexC = MutexC<T> && requires(T t) {
 		{
-			T::LockShared()
-		} -> std::same_as<void>;
+			t.LockShared()
+		} noexcept -> std::same_as<void>;
 		{
-			T::TryLockShared()
-		} -> std::same_as<bool>;
+			t.TryLockShared()
+		} noexcept -> std::same_as<bool>;
 		{
-			T::UnlockShared()
-		} -> std::same_as<void>;
+			t.UnlockShared()
+		} noexcept -> std::same_as<void>;
 	};
 
 	struct Mutex
