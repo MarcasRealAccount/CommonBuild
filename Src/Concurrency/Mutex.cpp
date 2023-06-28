@@ -7,7 +7,7 @@
 
 namespace Concurrency
 {
-	static std::uint64_t GetThreadID()
+	static std::uint64_t GetThreadID() noexcept
 	{
 #if BUILD_IS_SYSTEM_WINDOWS
 		return GetCurrentThreadId();
@@ -16,7 +16,7 @@ namespace Concurrency
 #endif
 	}
 
-	void Mutex::Lock()
+	void Mutex::Lock() noexcept
 	{
 		bool val = false;
 		while (val = false, !m_Value.compare_exchange_weak(val, true))
@@ -29,13 +29,13 @@ namespace Concurrency
 		return m_Value.compare_exchange_weak(val, true);
 	}
 
-	void Mutex::Unlock()
+	void Mutex::Unlock() noexcept
 	{
 		m_Value.store(false);
 		m_Value.notify_all();
 	}
 
-	void RecursiveMutex::Lock()
+	void RecursiveMutex::Lock() noexcept
 	{
 		std::uint64_t tid = GetThreadID();
 		std::uint64_t to  = tid << 32 | 1;
@@ -65,13 +65,13 @@ namespace Concurrency
 		return res;
 	}
 
-	void RecursiveMutex::Unlock()
+	void RecursiveMutex::Unlock() noexcept
 	{
 		m_Value.fetch_sub(1ULL);
 		m_Value.notify_all();
 	}
 
-	void SharedMutex::Lock()
+	void SharedMutex::Lock() noexcept
 	{
 		std::uint64_t tid = GetThreadID();
 		std::uint64_t to  = tid << 32 | 0x8000'0001;
@@ -80,7 +80,7 @@ namespace Concurrency
 			m_Value.wait(val);
 	}
 
-	void SharedMutex::LockShared()
+	void SharedMutex::LockShared() noexcept
 	{
 		std::uint64_t tid = GetThreadID();
 		std::uint64_t val = m_Value.load();
@@ -106,20 +106,20 @@ namespace Concurrency
 		return !(val & 0x8000'0000) && m_Value.compare_exchange_weak(val, val + 1);
 	}
 
-	void SharedMutex::Unlock()
+	void SharedMutex::Unlock() noexcept
 	{
 		if ((m_Value.fetch_sub(1ULL) & 0x7FFF'FFFF) == 1)
 			m_Value.store(0ULL);
 		m_Value.notify_all();
 	}
 
-	void SharedMutex::UnlockShared()
+	void SharedMutex::UnlockShared() noexcept
 	{
 		m_Value.fetch_sub(1ULL);
 		m_Value.notify_all();
 	}
 
-	void RecursiveSharedMutex::Lock()
+	void RecursiveSharedMutex::Lock() noexcept
 	{
 		std::uint64_t tid = GetThreadID();
 		std::uint64_t to  = tid << 32 | 0x8000'0001;
@@ -135,7 +135,7 @@ namespace Concurrency
 		}
 	}
 
-	void RecursiveSharedMutex::LockShared()
+	void RecursiveSharedMutex::LockShared() noexcept
 	{
 		std::uint64_t tid = GetThreadID();
 		std::uint64_t val = m_Value.load();
@@ -177,14 +177,14 @@ namespace Concurrency
 		return !(val & 0x8000'0000) && m_Value.compare_exchange_weak(val, val + 1);
 	}
 
-	void RecursiveSharedMutex::Unlock()
+	void RecursiveSharedMutex::Unlock() noexcept
 	{
 		if ((m_Value.fetch_sub(1ULL) & 0x7FFF'FFFF) == 1)
 			m_Value.store(0ULL);
 		m_Value.notify_all();
 	}
 
-	void RecursiveSharedMutex::UnlockShared()
+	void RecursiveSharedMutex::UnlockShared() noexcept
 	{
 		m_Value.fetch_sub(1ULL);
 		m_Value.notify_all();

@@ -42,9 +42,9 @@ namespace Concurrency
 		Mutex(const Mutex&)            = delete;
 		Mutex& operator=(const Mutex&) = delete;
 
-		void Lock();
+		void Lock() noexcept;
 		bool TryLock() noexcept;
-		void Unlock();
+		void Unlock() noexcept;
 
 	private:
 		std::atomic_bool m_Value;
@@ -61,9 +61,9 @@ namespace Concurrency
 		RecursiveMutex(const RecursiveMutex&)            = delete;
 		RecursiveMutex& operator=(const RecursiveMutex&) = delete;
 
-		void Lock();
+		void Lock() noexcept;
 		bool TryLock() noexcept;
-		void Unlock();
+		void Unlock() noexcept;
 
 	private:
 		std::atomic_uint64_t m_Value;
@@ -80,12 +80,12 @@ namespace Concurrency
 		SharedMutex(const SharedMutex&)            = delete;
 		SharedMutex& operator=(const SharedMutex&) = delete;
 
-		void Lock();
-		void LockShared();
+		void Lock() noexcept;
+		void LockShared() noexcept;
 		bool TryLock() noexcept;
 		bool TryLockShared() noexcept;
-		void Unlock();
-		void UnlockShared();
+		void Unlock() noexcept;
+		void UnlockShared() noexcept;
 
 	private:
 		std::atomic_uint64_t m_Value;
@@ -102,31 +102,31 @@ namespace Concurrency
 		RecursiveSharedMutex(const RecursiveSharedMutex&)            = delete;
 		RecursiveSharedMutex& operator=(const RecursiveSharedMutex&) = delete;
 
-		void Lock();
-		void LockShared();
+		void Lock() noexcept;
+		void LockShared() noexcept;
 		bool TryLock() noexcept;
 		bool TryLockShared() noexcept;
-		void Unlock();
-		void UnlockShared();
+		void Unlock() noexcept;
+		void UnlockShared() noexcept;
 
 	private:
 		std::atomic_uint64_t m_Value;
 	};
 
 	template <MutexC... Mutexes>
-	void Lock(Mutexes&... mutexes)
+	void Lock(Mutexes&... mutexes) noexcept
 	{
 		(mutexes.Lock(), ...);
 	}
 
 	template <SharedMutexC... Mutexes>
-	void LockShared(Mutexes&... mutexes)
+	void LockShared(Mutexes&... mutexes) noexcept
 	{
 		(mutexes.LockShared(), ...);
 	}
 
 	template <MutexC... Mutexes>
-	std::size_t TryLock(Mutexes&... mutexes)
+	std::size_t TryLock(Mutexes&... mutexes) noexcept
 	{
 		std::size_t count = 0;
 		(count += mutexes.TryLock() ? 1 : 0, ...);
@@ -134,7 +134,7 @@ namespace Concurrency
 	}
 
 	template <SharedMutexC... Mutexes>
-	std::size_t TryLockShared(Mutexes&... mutexes)
+	std::size_t TryLockShared(Mutexes&... mutexes) noexcept
 	{
 		std::size_t count = 0;
 		(count += mutexes.TryLockShared() ? 1 : 0, ...);
@@ -142,13 +142,13 @@ namespace Concurrency
 	}
 
 	template <MutexC... Mutexes>
-	void Unlock(Mutexes&... mutexes)
+	void Unlock(Mutexes&... mutexes) noexcept
 	{
 		(mutexes.Unlock(), ...);
 	}
 
 	template <SharedMutexC... Mutexes>
-	void UnlockShared(Mutexes&... mutexes)
+	void UnlockShared(Mutexes&... mutexes) noexcept
 	{
 		(mutexes.UnlockShared(), ...);
 	}
@@ -157,13 +157,13 @@ namespace Concurrency
 	struct ScopedLock
 	{
 	public:
-		explicit ScopedLock(Mutexes&... mutexes)
+		explicit ScopedLock(Mutexes&... mutexes) noexcept
 			: m_Mutexes(std::tie(mutexes...))
 		{
 			Lock(mutexes...);
 		}
 
-		~ScopedLock()
+		~ScopedLock() noexcept
 		{
 			Unlock(std::make_index_sequence<sizeof...(Mutexes)> {});
 		}
@@ -173,7 +173,7 @@ namespace Concurrency
 
 	private:
 		template <std::size_t... Indices>
-		void Unlock(const std::index_sequence<Indices...>&)
+		void Unlock(const std::index_sequence<Indices...>&) noexcept
 		{
 			(std::get<Indices>(m_Mutexes).Unlock(), ...);
 		}
@@ -186,13 +186,13 @@ namespace Concurrency
 	struct ScopedSharedLock
 	{
 	public:
-		explicit ScopedSharedLock(Mutexes&... mutexes)
+		explicit ScopedSharedLock(Mutexes&... mutexes) noexcept
 			: m_Mutexes(std::tie(mutexes...))
 		{
 			LockShared(mutexes...);
 		}
 
-		~ScopedSharedLock()
+		~ScopedSharedLock() noexcept
 		{
 			Unlock(std::make_index_sequence<sizeof...(Mutexes)>);
 		}
@@ -202,7 +202,7 @@ namespace Concurrency
 
 	private:
 		template <std::size_t... Indices>
-		void Unlock(const std::index_sequence<Indices...>&)
+		void Unlock(const std::index_sequence<Indices...>&) noexcept
 		{
 			(std::get<Indices>(m_Mutexes).UnlockShared(), ...);
 		}

@@ -8,7 +8,7 @@
 
 namespace Memory
 {
-	void* AlignedMalloc(std::size_t alignment, std::size_t size)
+	void* AlignedMalloc(std::size_t alignment, std::size_t size) noexcept
 	{
 		if constexpr (Common::c_IsSystemWindows)
 			return _aligned_malloc(size, alignment);
@@ -16,7 +16,7 @@ namespace Memory
 			return nullptr;
 	}
 
-	void* AlignedZalloc(std::size_t alignment, std::size_t size)
+	void* AlignedZalloc(std::size_t alignment, std::size_t size) noexcept
 	{
 		if constexpr (Common::c_IsSystemWindows)
 		{
@@ -31,7 +31,7 @@ namespace Memory
 		}
 	}
 
-	void* AlignedCalloc(std::size_t alignment, std::size_t count, std::size_t size)
+	void* AlignedCalloc(std::size_t alignment, std::size_t count, std::size_t size) noexcept
 	{
 		if constexpr (Common::c_IsSystemWindows)
 			return AlignedMalloc(alignment, count * AlignCeil(size, alignment));
@@ -39,7 +39,7 @@ namespace Memory
 			return nullptr;
 	}
 
-	void* AlignedZCalloc(std::size_t alignment, std::size_t count, std::size_t size)
+	void* AlignedZCalloc(std::size_t alignment, std::size_t count, std::size_t size) noexcept
 	{
 		if constexpr (Common::c_IsSystemWindows)
 		{
@@ -55,7 +55,7 @@ namespace Memory
 		}
 	}
 
-	void* AlignedRMalloc(void* ptr, std::size_t alignment, std::size_t newSize)
+	void* AlignedRMalloc(void* ptr, std::size_t alignment, std::size_t newSize) noexcept
 	{
 		if constexpr (Common::c_IsSystemWindows)
 			return _aligned_realloc(ptr, newSize, alignment);
@@ -63,7 +63,7 @@ namespace Memory
 			return nullptr;
 	}
 
-	void* AlignedRZalloc(void* ptr, std::size_t alignment, std::size_t newSize)
+	void* AlignedRZalloc(void* ptr, std::size_t alignment, std::size_t newSize) noexcept
 	{
 		if constexpr (Common::c_IsSystemWindows)
 		{
@@ -78,7 +78,7 @@ namespace Memory
 		}
 	}
 
-	void* AlignedRCalloc(void* ptr, std::size_t alignment, std::size_t newCount, std::size_t newSize)
+	void* AlignedRCalloc(void* ptr, std::size_t alignment, std::size_t newCount, std::size_t newSize) noexcept
 	{
 		if constexpr (Common::c_IsSystemWindows)
 			return AlignedRMalloc(ptr, alignment, newCount * AlignCeil(newSize, alignment));
@@ -86,7 +86,7 @@ namespace Memory
 			return nullptr;
 	}
 
-	void* AlignedRZCalloc(void* ptr, std::size_t alignment, std::size_t newCount, std::size_t newSize)
+	void* AlignedRZCalloc(void* ptr, std::size_t alignment, std::size_t newCount, std::size_t newSize) noexcept
 	{
 		if constexpr (Common::c_IsSystemWindows)
 		{
@@ -102,93 +102,93 @@ namespace Memory
 		}
 	}
 
-	void* AlignedEMalloc(void* ptr, std::size_t alignment, std::size_t newSize)
+	void* AlignedEMalloc(void* ptr, std::size_t alignment, std::size_t newSize) noexcept
 	{
 		return nullptr;
 	}
 
-	void* AlignedEZalloc(void* ptr, std::size_t alignment, std::size_t newSize)
+	void* AlignedEZalloc(void* ptr, std::size_t alignment, std::size_t newSize) noexcept
 	{
 		return nullptr;
 	}
 
-	void* AlignedECalloc(void* ptr, std::size_t alignment, std::size_t newCount, std::size_t newSize)
+	void* AlignedECalloc(void* ptr, std::size_t alignment, std::size_t newCount, std::size_t newSize) noexcept
 	{
 		return nullptr;
 	}
 
-	void* AlignedEZCalloc(void* ptr, std::size_t alignment, std::size_t newCount, std::size_t newSize)
+	void* AlignedEZCalloc(void* ptr, std::size_t alignment, std::size_t newCount, std::size_t newSize) noexcept
 	{
 		return nullptr;
 	}
 
-	void AlignedFree(void* ptr, std::size_t alignment)
+	void AlignedFree(void* ptr, std::size_t alignment) noexcept
 	{
 		if constexpr (Common::c_IsSystemWindows)
 			_aligned_free(ptr);
 	}
 
-	void* Malloc(std::size_t size)
+	void* Malloc(std::size_t size) noexcept
 	{
 		return AlignedMalloc(16, size);
 	}
 
-	void* Zalloc(std::size_t size)
+	void* Zalloc(std::size_t size) noexcept
 	{
 		return AlignedZalloc(16, size);
 	}
 
-	void* Calloc(std::size_t count, std::size_t size)
+	void* Calloc(std::size_t count, std::size_t size) noexcept
 	{
 		return AlignedCalloc(16, count, size);
 	}
 
-	void* ZCalloc(std::size_t count, std::size_t size)
+	void* ZCalloc(std::size_t count, std::size_t size) noexcept
 	{
 		return AlignedZCalloc(16, count, size);
 	}
 
-	void* RMalloc(void* ptr, std::size_t newSize)
+	void* RMalloc(void* ptr, std::size_t newSize) noexcept
 	{
 		return AlignedRMalloc(ptr, 16, newSize);
 	}
 
-	void* RZalloc(void* ptr, std::size_t newSize)
+	void* RZalloc(void* ptr, std::size_t newSize) noexcept
 	{
 		return AlignedRZalloc(ptr, 16, newSize);
 	}
 
-	void* RCalloc(void* ptr, std::size_t newCount, std::size_t newSize)
+	void* RCalloc(void* ptr, std::size_t newCount, std::size_t newSize) noexcept
 	{
 		return AlignedRCalloc(ptr, 16, newCount, newSize);
 	}
 
-	void* RZCalloc(void* ptr, std::size_t newCount, std::size_t newSize)
+	void* RZCalloc(void* ptr, std::size_t newCount, std::size_t newSize) noexcept
 	{
 		return AlignedRZCalloc(ptr, 16, newCount, newSize);
 	}
 
-	void* EMalloc(void* ptr, std::size_t newSize)
+	void* EMalloc(void* ptr, std::size_t newSize) noexcept
 	{
 		return AlignedEMalloc(ptr, 16, newSize);
 	}
 
-	void* EZalloc(void* ptr, std::size_t newSize)
+	void* EZalloc(void* ptr, std::size_t newSize) noexcept
 	{
 		return AlignedEZalloc(ptr, 16, newSize);
 	}
 
-	void* ECalloc(void* ptr, std::size_t newCount, std::size_t newSize)
+	void* ECalloc(void* ptr, std::size_t newCount, std::size_t newSize) noexcept
 	{
 		return AlignedECalloc(ptr, 16, newCount, newSize);
 	}
 
-	void* EZCalloc(void* ptr, std::size_t newCount, std::size_t newSize)
+	void* EZCalloc(void* ptr, std::size_t newCount, std::size_t newSize) noexcept
 	{
 		return AlignedEZCalloc(ptr, 16, newCount, newSize);
 	}
 
-	void Free(void* ptr)
+	void Free(void* ptr) noexcept
 	{
 		return AlignedFree(ptr, 16);
 	}
