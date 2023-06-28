@@ -202,8 +202,8 @@ namespace Allocator
 	AllocInfo Allocate(std::size_t size, std::uint8_t alignment);
 	AllocInfo AllocateSmall(std::uint16_t allocSize, std::uint8_t alignment);
 	AllocInfo AllocateLarge(std::size_t size, std::uint8_t alignment);
-	bool      NeedsResize(const AllocInfo& alloc, std::size_t newCount, std::size_t newSize);
-	bool      TryResizeAlloc(const AllocInfo& alloc, std::size_t newCount, std::size_t newSize, AllocInfo* newAlloc = nullptr);
+	bool      NeedsResize(const AllocInfo& alloc, std::size_t newSize);
+	bool      TryResizeAlloc(const AllocInfo& alloc, std::size_t newSize, AllocInfo* newAlloc = nullptr);
 	void      Free(const AllocInfo& alloc);
 	void      ZeroAlloc(const AllocInfo& alloc);
 	void      ZeroAllocRange(const AllocInfo& alloc, std::size_t offset, std::size_t size);

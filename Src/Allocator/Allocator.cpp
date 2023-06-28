@@ -823,17 +823,17 @@ namespace Allocator
 		};
 	}
 
-	bool NeedsResize(const AllocInfo& alloc, std::size_t newCount, std::size_t newSize)
+	bool NeedsResize(const AllocInfo& alloc, std::size_t newSize)
 	{
 		if (!alloc.Address || !alloc.Range.Table)
 			return false;
 
 		State&      state = s_State;
-		std::size_t size  = CountedSize(newCount, newSize, alloc.Range.Table->Header.Alignment);
+		std::size_t size  = AllocSize(newSize, alloc.Range.Table->Header.Alignment);
 		return size < (alloc.Size >> 1) || size > alloc.Size;
 	}
 
-	bool TryResizeAlloc(const AllocInfo& alloc, std::size_t newCount, std::size_t newSize, AllocInfo* newAlloc)
+	bool TryResizeAlloc(const AllocInfo& alloc, std::size_t newSize, AllocInfo* newAlloc)
 	{
 		if (!alloc.Address || !alloc.Range.Table)
 			return false;
@@ -842,7 +842,7 @@ namespace Allocator
 		if (alloc.Range.Table->Header.Type != ERangeTableType::Small)
 			return false;
 
-		std::size_t newAllocSize = CountedSize(newCount, newSize, alloc.Range.Table->Header.Alignment);
+		std::size_t newAllocSize = AllocSize(newSize, alloc.Range.Table->Header.Alignment);
 		if (newAllocSize >= 65536)
 			return false;
 
