@@ -16,23 +16,29 @@ namespace Allocator
 	struct UsedRange
 	{
 	public:
-		std::uint16_t Start;
-		std::uint16_t End;
+		std::uint32_t Start;
+		std::uint32_t End;
+
+	public:
+		std::size_t Size() const { return static_cast<std::size_t>(End) - Start + 1; }
 	};
 
 	struct FreeRange
 	{
 	public:
-		std::uint16_t Start;
-		std::uint16_t End;
+		std::uint32_t Start;
+		std::uint32_t End;
+
+	public:
+		std::size_t Size() const { return static_cast<std::size_t>(End) - Start + 1; }
 	};
 
 	struct UsedTableHeader
 	{
 	public:
-		std::size_t Total;
-		std::size_t Last;
-		std::size_t LastArray;
+		std::size_t   Total;
+		std::uint32_t Last;
+		std::uint32_t LastArray;
 
 		RSM Mtx;
 	};
@@ -47,9 +53,9 @@ namespace Allocator
 	struct FreeTableHeader
 	{
 	public:
-		std::size_t Total;
-		std::size_t Last;
-		std::size_t LastArray;
+		std::size_t   Total;
+		std::uint32_t Last;
+		std::uint32_t LastArray;
 
 		RSM Mtx;
 	};
@@ -149,6 +155,16 @@ namespace Allocator
 	public:
 		RangeTable* Table;
 		std::size_t Range;
+
+	public:
+		RangeInfo() noexcept;
+		RangeInfo(RangeTable* table, std::size_t range) noexcept;
+		RangeInfo(const RangeInfo& copy) noexcept;
+		RangeInfo(RangeInfo&& move) noexcept;
+		~RangeInfo() noexcept;
+
+		RangeInfo& operator=(const RangeInfo& copy) noexcept;
+		RangeInfo& operator=(RangeInfo&& move) noexcept;
 	};
 
 	struct AllocInfo
@@ -156,9 +172,19 @@ namespace Allocator
 	public:
 		std::uintptr_t Address;
 		std::size_t    Size;
-		std::size_t    Index;
+		std::uint32_t  Index;
 
 		RangeInfo Range;
+
+	public:
+		AllocInfo() noexcept;
+		AllocInfo(std::uintptr_t address, std::size_t size, std::uint32_t index, RangeInfo range) noexcept;
+		AllocInfo(const AllocInfo& copy) noexcept;
+		AllocInfo(AllocInfo&& move) noexcept;
+		~AllocInfo() noexcept;
+
+		AllocInfo& operator=(const AllocInfo& copy) noexcept;
+		AllocInfo& operator=(AllocInfo&& move) noexcept;
 	};
 
 	State& GetState();
@@ -173,4 +199,12 @@ namespace Allocator
 	bool         ShouldAllocSmall(std::size_t allocSize);
 
 	AllocInfo FindAlloc(std::uintptr_t address, std::uint8_t alignment);
+	AllocInfo Allocate(std::size_t size, std::uint8_t alignment);
+	AllocInfo AllocateSmall(std::uint16_t allocSize, std::uint8_t alignment);
+	AllocInfo AllocateLarge(std::size_t size, std::uint8_t alignment);
+	bool      NeedsResize(const AllocInfo& alloc, std::size_t newCount, std::size_t newSize);
+	bool      TryResizeAlloc(const AllocInfo& alloc, std::size_t newCount, std::size_t newSize, AllocInfo* newAlloc = nullptr);
+	void      Free(const AllocInfo& alloc);
+	void      ZeroAlloc(const AllocInfo& alloc);
+	void      ZeroAllocRange(const AllocInfo& alloc, std::size_t offset, std::size_t size);
 } // namespace Allocator
