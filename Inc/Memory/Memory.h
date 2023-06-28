@@ -33,6 +33,27 @@ namespace Memory
 			return value / alignment * alignment;
 	}
 
+	template <Details::Numeric T1, Details::Numeric T2>
+	constexpr auto AlignCountCeil(T1 value, T2 alignment) noexcept
+	{
+		auto mask = alignment - 1;
+		auto val  = value + mask;
+		if ((alignment & mask) == 0)
+			return val >> alignment;
+		else
+			return val / alignment;
+	}
+
+	template <Details::Numeric T1, Details::Numeric T2>
+	constexpr auto AlignCountFloor(T1 value, T2 alignment) noexcept
+	{
+		auto mask = alignment - 1;
+		if ((alignment & mask) == 0)
+			return value >> alignment;
+		else
+			return value / alignment;
+	}
+
 	[[nodiscard]] void* AlignedMalloc(std::size_t alignment, std::size_t size) noexcept;
 	[[nodiscard]] void* AlignedZalloc(std::size_t alignment, std::size_t size) noexcept;
 	[[nodiscard]] void* AlignedCalloc(std::size_t alignment, std::size_t count, std::size_t size) noexcept;
