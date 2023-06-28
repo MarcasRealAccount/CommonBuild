@@ -27,6 +27,7 @@ namespace Allocator
 			++stat.Count;
 			stat.Bytes += pageCount << s_State.PageAlign;
 		}
+		// TODO(MarcasRealAccount): Push message
 		return ptr;
 	}
 
@@ -45,6 +46,7 @@ namespace Allocator
 			--stat.Count;
 			stat.Bytes -= pageCount << s_State.PageAlign;
 		}
+		// TODO(MarcasRealAccount): Push message
 	}
 
 	template <class T, class U, class Compare>
@@ -64,6 +66,24 @@ namespace Allocator
 			min / arraySize,
 			min % arraySize
 		};
+	}
+
+	template <class T, class U, class Compare>
+	static std::pair<std::size_t, std::size_t> Search(T** table, const U& value, std::size_t arraySize, std::size_t min, std::size_t max, Compare comp)
+	{
+		std::size_t ii = min / arraySize;
+		std::size_t ij = min % arraySize;
+		for (std::size_t i = min; i < max; ++i)
+		{
+			if (!comp(table[i][j], value))
+				break;
+			if (++ij > arraySize)
+			{
+				++ii;
+				ij = 0;
+			}
+		}
+		return { ii, ij };
 	}
 
 	enum class EIterateStatus
@@ -97,27 +117,49 @@ namespace Allocator
 	template <class T>
 	static void MoveBackward(T** table, std::size_t arraySize, std::size_t min, std::size_t max, std::size_t to)
 	{
-		std::size_t size = max - min;
-		for (std::size_t i = max, j = to + size; i > min; --i, --j)
+		std::size_t  size = max - min;
+		std::size_t  j    = to + size;
+		std::int64_t ii   = max / arraySize;
+		std::int64_t ij   = max % arraySize;
+		std::int64_t ji   = j / arraySize;
+		std::int64_t jj   = j % arraySize;
+		for (std::size_t i = max; i > min; --i)
 		{
-			std::size_t ii = i / arraySize;
-			std::size_t ij = i % arraySize;
-			std::size_t ji = j / arraySize;
-			std::size_t jj = j % arraySize;
-			table[ji][jj]  = table[ii][ij];
+			table[ji][jj] = table[ii][ij];
+
+			if (--ij < 0)
+			{
+				--ii;
+				ij = arraySize - 1;
+			}
+			if (--jj < 0)
+			{
+				--ji;
+				jj = arraySize - 1;
+			}
 		}
 	}
 
 	template <class T>
 	static void MoveForward(T** table, std::size_t arraySize, std::size_t min, std::size_t max, std::size_t to)
 	{
-		for (std::size_t i = min, j = to; i < max; ++i, ++j)
+		std::int64_t ii = max / arraySize;
+		std::int64_t ij = max % arraySize;
+		std::int64_t ji = to / arraySize;
+		std::int64_t jj = to % arraySize;
+		for (std::size_t i = min; i < max; ++i)
 		{
-			std::size_t ii = i / arraySize;
-			std::size_t ij = i % arraySize;
-			std::size_t ji = j / arraySize;
-			std::size_t jj = j % arraySize;
-			table[ji][jj]  = table[ii][ij];
+			table[ji][jj] = table[ii][ij];
+			if (++ij >= arraySize)
+			{
+				++ii;
+				ij = 0;
+			}
+			if (++jj >= arraySize)
+			{
+				++ji;
+				jj = 0;
+			}
 		}
 	}
 
@@ -169,6 +211,8 @@ namespace Allocator
 	{
 		auto lock = ScopedLock<RSM> { Mtx };
 
+		// TODO(MarcasRealAccount): Free up everything
+
 		FreePages(RangeTables[0], 120 * TablePages);
 		for (std::uint8_t offset = 0; offset < 120; ++offset)
 			RangeTables[offset] = nullptr;
@@ -185,7 +229,7 @@ namespace Allocator
 		  Range(range)
 	{
 		if (Table)
-			Table->Header.Mtx.LockShared();
+			Table->Header.Mtx.Lock();
 	}
 
 	RangeInfo::RangeInfo(const RangeInfo& copy) noexcept
@@ -193,7 +237,7 @@ namespace Allocator
 		  Range(copy.Range)
 	{
 		if (Table)
-			Table->Header.Mtx.LockShared();
+			Table->Header.Mtx.Lock();
 	}
 
 	RangeInfo::RangeInfo(RangeInfo&& move) noexcept
@@ -207,24 +251,24 @@ namespace Allocator
 	RangeInfo::~RangeInfo() noexcept
 	{
 		if (Table)
-			Table->Header.Mtx.UnlockShared();
+			Table->Header.Mtx.Unlock();
 	}
 
 	RangeInfo& RangeInfo::operator=(const RangeInfo& copy) noexcept
 	{
 		if (Table)
-			Table->Header.Mtx.UnlockShared();
+			Table->Header.Mtx.Unlock();
 		Table = copy.Table;
 		Range = copy.Range;
 		if (Table)
-			Table->Header.Mtx.LockShared();
+			Table->Header.Mtx.Lock();
 		return *this;
 	}
 
 	RangeInfo& RangeInfo::operator=(RangeInfo&& move) noexcept
 	{
 		if (Table)
-			Table->Header.Mtx.UnlockShared();
+			Table->Header.Mtx.Unlock();
 		Table      = move.Table;
 		Range      = move.Range;
 		move.Table = nullptr;
@@ -254,9 +298,9 @@ namespace Allocator
 			auto* ranges = Range.Table->Ranges[i];
 			auto& range  = ranges[j];
 			if (range.UsedTable)
-				range.UsedTable->Header.Mtx.LockShared();
+				range.UsedTable->Header.Mtx.Lock();
 			if (range.FreeTable)
-				range.FreeTable->Header.Mtx.LockShared();
+				range.FreeTable->Header.Mtx.Lock();
 		}
 	}
 
@@ -275,9 +319,9 @@ namespace Allocator
 			auto* ranges = Range.Table->Ranges[i];
 			auto& range  = ranges[j];
 			if (range.UsedTable)
-				range.UsedTable->Header.Mtx.LockShared();
+				range.UsedTable->Header.Mtx.Lock();
 			if (range.FreeTable)
-				range.FreeTable->Header.Mtx.LockShared();
+				range.FreeTable->Header.Mtx.Lock();
 		}
 	}
 
@@ -303,9 +347,9 @@ namespace Allocator
 			auto* ranges = Range.Table->Ranges[i];
 			auto& range  = ranges[j];
 			if (range.UsedTable)
-				range.UsedTable->Header.Mtx.UnlockShared();
+				range.UsedTable->Header.Mtx.Unlock();
 			if (range.FreeTable)
-				range.FreeTable->Header.Mtx.UnlockShared();
+				range.FreeTable->Header.Mtx.Unlock();
 		}
 	}
 
@@ -320,9 +364,9 @@ namespace Allocator
 			auto* ranges = Range.Table->Ranges[i];
 			auto& range  = ranges[j];
 			if (range.UsedTable)
-				range.UsedTable->Header.Mtx.UnlockShared();
+				range.UsedTable->Header.Mtx.Unlock();
 			if (range.FreeTable)
-				range.FreeTable->Header.Mtx.UnlockShared();
+				range.FreeTable->Header.Mtx.Unlock();
 		}
 
 		Address = copy.Address;
@@ -339,9 +383,9 @@ namespace Allocator
 			auto* ranges = Range.Table->Ranges[i];
 			auto& range  = ranges[j];
 			if (range.UsedTable)
-				range.UsedTable->Header.Mtx.LockShared();
+				range.UsedTable->Header.Mtx.Lock();
 			if (range.FreeTable)
-				range.FreeTable->Header.Mtx.LockShared();
+				range.FreeTable->Header.Mtx.Lock();
 		}
 
 		return *this;
@@ -358,9 +402,9 @@ namespace Allocator
 			auto* ranges = Range.Table->Ranges[i];
 			auto& range  = ranges[j];
 			if (range.UsedTable)
-				range.UsedTable->Header.Mtx.UnlockShared();
+				range.UsedTable->Header.Mtx.Unlock();
 			if (range.FreeTable)
-				range.FreeTable->Header.Mtx.UnlockShared();
+				range.FreeTable->Header.Mtx.Unlock();
 		}
 
 		Address = move.Address;
@@ -565,11 +609,12 @@ namespace Allocator
 			if (rangeSize > allocSize)
 			{
 				freeRange.Start += allocSize;
+				// TODO(MarcasRealAccount): Reorder free range
 			}
 			else
 			{
 				std::size_t min = l * state.FreePerArray + m;
-				Move(freeTable->Frees, state.FreePerArray, min, freeTable->Header.Last, min - 1);
+				Move(freeTable->Frees, state.FreePerArray, min + 1, freeTable->Header.Last, min);
 				--freeTable->Header.Last;
 			}
 
@@ -601,6 +646,9 @@ namespace Allocator
 				n * state.UsedPerArray + o,
 				{table, index.first * state.RangesPerArray + index.second}
 			};
+			auto& stat = state.DebugStats.Small;
+			++stat.Count;
+			stat.Bytes += info.Size;
 			return EIterateStatus::Break;
 		});
 		if (status != EIterateStatus::Break)
@@ -669,6 +717,9 @@ namespace Allocator
 				0,
 				{table, i * state.RangesPerArray + j}
 			};
+			auto& stat = state.DebugStats.Small;
+			++stat.Count;
+			stat.Bytes += info.Size;
 		}
 
 		return info;
@@ -714,6 +765,10 @@ namespace Allocator
 		};
 		++table->Header.Last;
 
+		auto& stat = state.DebugStats.Large;
+		++stat.Count;
+		stat.Bytes += range.Pages << state.PageAlign;
+
 		return {
 			range.Address,
 			range.Pages << state.PageAlign,
@@ -734,10 +789,153 @@ namespace Allocator
 
 	bool TryResizeAlloc(const AllocInfo& alloc, std::size_t newCount, std::size_t newSize, AllocInfo* newAlloc)
 	{
+		if (!alloc.Address || !alloc.Range.Table)
+			return false;
+
+		// Only small allocations can be resized
+		if (alloc.Range.Table->Header.Type != ERangeTableType::Small)
+			return false;
+
+		std::size_t newAllocSize = CountedSize(newCount, newSize, alloc.Range.Table->Header.Alignment);
+		if (newAllocSize >= 65536)
+			return false;
+
+		State& state = s_State;
+
+		std::size_t i = alloc.Range.Range / state.RangesPerArray;
+		std::size_t j = alloc.Range.Range % state.RangesPerArray;
+
+		Range& range = alloc.Range.Table->Ranges[i][j];
+
+		auto [k, l] = Search(range.FreeTable->Frees,
+							 alloc.Index,
+							 state.FreePerArray,
+							 0,
+							 range.FreeTable->Header.Last,
+							 [](FreeRange range, std::uint32_t index) -> bool {
+								 return range.Start < index;
+							 });
+
+		FreeRange&  freeRange = range.FreeTable->Frees[k][l];
+		std::size_t allocSize = alloc.Size >> alloc.Range.Table->Header.Alignment;
+		if (freeRange.Start != alloc.Index + allocSize)
+			return false;
+
+		std::size_t requiredSize = newAllocSize - allocSize;
+		if (freeRange.Size() < requiredSize)
+			return false;
+		if (freeRange.Size() > requiredSize)
+		{
+			freeRange.Start += requiredSize;
+			// TODO(MarcasRealAccount): Reorder free range
+		}
+		else
+		{
+			std::size_t min = k * state.FreePerArray + l;
+			Move(range.FreeTable->Frees, state.FreePerArray, min + 1, range.FreeTable->Header.Last, min);
+			--range.FreeTable->Header.Last;
+		}
+
+		std::size_t m         = alloc.Index / state.UsedPerArray;
+		std::size_t n         = alloc.Index % state.UsedPerArray;
+		UsedRange&  usedRange = range.UsedTable->Used[m][n];
+		usedRange.End        += requiredSize;
+		if (newAlloc)
+		{
+			*newAlloc = {
+				alloc.Address,
+				newAllocSize << alloc.Range.Table->Header.Alignment,
+				alloc.Index,
+				{alloc.Range.Table, alloc.Range.Range}
+			};
+		}
+		return true;
 	}
 
 	void Free(const AllocInfo& alloc)
 	{
+		if (!alloc.Address || !alloc.Range.Table)
+			return;
+
+		State& state = s_State;
+
+		RangeTable* table = alloc.Range.Table;
+
+		std::size_t i = alloc.Range.Range / state.RangesPerArray;
+		std::size_t j = alloc.Range.Range % state.RangesPerArray;
+
+		Range& range = table->Ranges[i][j];
+		switch (table->Header.Type)
+		{
+		case ERangeTableType::Small:
+		{
+			std::size_t k         = alloc.Index / state.UsedPerArray;
+			std::size_t l         = alloc.Index % state.UsedPerArray;
+			UsedRange&  usedRange = range.UsedTable->Used[k][l];
+
+			auto [m, n] = Search(range.FreeTable->Frees,
+								 usedRange.Start - 1,
+								 state.FreePerArray,
+								 0,
+								 range.FreeTable->Header.Last,
+								 [](FreeRange range, std::uint32_t index) -> bool {
+									 return range.End < index;
+								 });
+
+			auto [o, p] = Search(range.FreeTable->Frees,
+								 usedRange.End,
+								 state.FreePerArray,
+								 0,
+								 range.FreeTable->Header.Last,
+								 [](FreeRange range, std::uint32_t index) -> bool {
+									 return range.Start < index;
+								 });
+
+			FreeRange lowerFree = range.FreeTable->Frees[m][n];
+			FreeRange upperFree = range.FreeTable->Frees[o][p];
+
+			if (lowerFree.End == usedRange.Start - 1)
+			{
+				if (upperFree.Start == usedRange.End + 1)
+				{
+					lowerFree.End = upperFree.End;
+					// TODO(MarcasRealAccount): Remove upperFree and reorder
+				}
+				else
+				{
+					lowerFree.End = usedRange.End;
+					// TODO(MarcasRealAccount): Reorder
+				}
+			}
+			else
+			{
+				if (upperFree.Start == usedRange.End + 1)
+				{
+					upperFree.Start = usedRange.Start;
+					// TODO(MarcasRealAccount): Reorder
+				}
+				else
+				{
+					// TODO(MarcasRealAccount): Add usedRange
+				}
+			}
+
+			range.FreeTable->Header.Total += usedRange.Size();
+			range.UsedTable->Header.Total -= usedRange.Size();
+			std::size_t min                = alloc.Index;
+			Move(range.UsedTable->Used, state.UsedPerArray, min + 1, range.UsedTable->Header.Last, min);
+			--range.UsedTable->Header.Last;
+			break;
+		}
+		case ERangeTableType::Large:
+		{
+			FreePages(reinterpret_cast<void*>(range.Address), range.Pages, false);
+			std::size_t min = alloc.Range.Range;
+			Move(table->Ranges, state.RangesPerArray, min + 1, table->Header.Last, min);
+			--table->Header.Last;
+			break;
+		}
+		}
 	}
 
 	void ZeroAlloc([[maybe_unused]] const AllocInfo& alloc)
