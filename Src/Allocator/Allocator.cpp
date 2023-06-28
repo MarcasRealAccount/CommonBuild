@@ -86,6 +86,24 @@ namespace Allocator
 		return { ii, ij };
 	}
 
+	template <class T, class Compare>
+	static std::pair<std::size_t, std::size_t> ReOrder(T** table, std::size_t index, std::size_t arraySize, std::size_t min, std::size_t max, Compare comp)
+	{
+		std::size_t i = index / arraySize;
+		std::size_t j = index % arraySize;
+
+		T original = std::move(table[i][j]);
+
+		auto [k, l]     = BinarySearch<T, T, Compare>(table, original, arraySize, min, max, comp);
+		std::size_t m   = k * arraySize + l;
+		std::size_t min = std::min(index + 1, m);
+		std::size_t max = std::max(index, m);
+		std::size_t to  = index < m ? index : m + 1;
+		Move(table, arraySize, min, max, to);
+
+		table[k][l] = std::move(original);
+	}
+
 	enum class EIterateStatus
 	{
 		Continue = 0,
@@ -211,7 +229,24 @@ namespace Allocator
 	{
 		auto lock = ScopedLock<RSM> { Mtx };
 
-		// TODO(MarcasRealAccount): Free up everything
+		// TODO(MarcasRealAccount): Push messages if there are unfreed user allocations
+		for (std::uint8_t offset = 0; offset < 120; ++offset)
+		{
+			RangeTable* table = RangeTables[offset];
+			{
+				auto lock2 = ScopedLock<RSM> { table->Header.Mtx };
+				Iterate(table->Ranges, RangesPerArray, 0, table->Header.Last, [this](Range& range, std::pair<std::size_t, std::size_t> index) -> EIterateStatus {
+					FreePages(reinterpret_cast<void*>(range.Address), range.Pages, false);
+					for (std::size_t i = 0; i < range.UsedTable->Header.LastArray; ++i)
+						FreePages(range.UsedTable->Used[i], ArrayPages);
+					for (std::size_t i = 0; i < range.FreeTable->Header.LastArray; ++i)
+						FreePages(range.FreeTable->Frees[i], ArrayPages);
+					FreePages(range.UsedTable, 2 * TablePages);
+				});
+			}
+			for (std::size_t i = 0; i < table->Header.LastArray; ++i)
+				FreePages(table->Ranges[i], ArrayPages);
+		}
 
 		FreePages(RangeTables[0], 120 * TablePages);
 		for (std::uint8_t offset = 0; offset < 120; ++offset)
@@ -609,7 +644,18 @@ namespace Allocator
 			if (rangeSize > allocSize)
 			{
 				freeRange.Start += allocSize;
-				// TODO(MarcasRealAccount): Reorder free range
+
+				auto [n, o] = ReOrder(freeTable->Frees,
+									  l * state.FreePerArray + m,
+									  state.FreePerArray,
+									  0,
+									  freeTable->Header.Last,
+									  [](FreeRange range, FreeRange other) -> bool {
+										  return range.Size() < other.Size();
+									  });
+
+				l = n;
+				m = o;
 			}
 			else
 			{
@@ -827,7 +873,18 @@ namespace Allocator
 		if (freeRange.Size() > requiredSize)
 		{
 			freeRange.Start += requiredSize;
-			// TODO(MarcasRealAccount): Reorder free range
+
+			auto [m, n] = ReOrder(range.FreeTable->Frees,
+								  k * state.FreePerArray + l,
+								  state.FreePerArray,
+								  0,
+								  range.FreeTable->Header.Last,
+								  [](FreeRange range, FreeRange other) -> bool {
+									  return range.Size() < other.Size();
+								  });
+
+			k = m;
+			l = n;
 		}
 		else
 		{
@@ -894,17 +951,38 @@ namespace Allocator
 			FreeRange lowerFree = range.FreeTable->Frees[m][n];
 			FreeRange upperFree = range.FreeTable->Frees[o][p];
 
+			std::size_t usedRangeSize = usedRange.Size();
 			if (lowerFree.End == usedRange.Start - 1)
 			{
 				if (upperFree.Start == usedRange.End + 1)
 				{
 					lowerFree.End = upperFree.End;
-					// TODO(MarcasRealAccount): Remove upperFree and reorder
+					{
+						std::size_t min = o * state.FreePerArray + p;
+						Move(range.FreeTable->Frees, state.UsedPerArray, min + 1, range.FreeTable->Header.Last, min);
+					}
+
+					auto [q, r] = ReOrder(range.FreeTable->Frees,
+										  m * state.FreePerArray + n,
+										  state.FreePerArray,
+										  0,
+										  range.FreeTable->Header.Last,
+										  [](FreeRange range, FreeRange other) -> bool {
+											  return range.Size() < other.Size();
+										  });
 				}
 				else
 				{
 					lowerFree.End = usedRange.End;
-					// TODO(MarcasRealAccount): Reorder
+
+					auto [q, r] = ReOrder(range.FreeTable->Frees,
+										  m * state.FreePerArray + n,
+										  state.FreePerArray,
+										  0,
+										  range.FreeTable->Header.Last,
+										  [](FreeRange range, FreeRange other) -> bool {
+											  return range.Size() < other.Size();
+										  });
 				}
 			}
 			else
@@ -912,16 +990,44 @@ namespace Allocator
 				if (upperFree.Start == usedRange.End + 1)
 				{
 					upperFree.Start = usedRange.Start;
-					// TODO(MarcasRealAccount): Reorder
+
+					auto [q, r] = ReOrder(range.FreeTable->Frees,
+										  o * state.FreePerArray + p,
+										  state.FreePerArray,
+										  0,
+										  range.FreeTable->Header.Last,
+										  [](FreeRange range, FreeRange other) -> bool {
+											  return range.Size() < other.Size();
+										  });
 				}
 				else
 				{
-					// TODO(MarcasRealAccount): Add usedRange
+					auto [q, r] = BinarySearch(range.FreeTable->Frees,
+											   usedRangeSize,
+											   state.FreePerArray,
+											   0,
+											   range.FreeTable->Header.Last,
+											   [](FreeRange range, std::size_t allocSize) -> bool {
+												   return range.Size() < allocSize;
+											   });
+					{
+						if (range.FreeTable->Header.Last == range.FreeTable->Header.LastArray * state.FreePerArray)
+						{
+							range.FreeTable->Frees[range.FreeTable->Header.LastArray] = static_cast<FreeRange*>(AllocatePages(state.ArrayPages));
+							++range.FreeTable->Header.LastArray;
+						}
+						std::size_t min = q * state.FreePerArray + r;
+						Move(range.FreeTable->Frees, state.FreePerArray, min, range.FreeTable->Header.Last, min + 1);
+					}
+
+					FreeRange& freeRange = range.FreeTable->Frees[q][r];
+					freeRange.Start      = usedRange.Start;
+					freeRange.End        = usedRange.End;
 				}
 			}
 
-			range.FreeTable->Header.Total += usedRange.Size();
-			range.UsedTable->Header.Total -= usedRange.Size();
+			range.FreeTable->Header.Total += usedRangeSize;
+			range.UsedTable->Header.Total -= usedRangeSize;
 			std::size_t min                = alloc.Index;
 			Move(range.UsedTable->Used, state.UsedPerArray, min + 1, range.UsedTable->Header.Last, min);
 			--range.UsedTable->Header.Last;
