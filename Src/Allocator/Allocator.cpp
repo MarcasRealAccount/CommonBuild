@@ -567,27 +567,35 @@ namespace Allocator
 
 	AllocInfo FindAlloc(std::uintptr_t address, std::uint8_t alignment)
 	{
-		if (alignment < 4)
-			return {};
-
 		State& state = s_State;
 		auto   lock  = ScopedSharedLock<RSM> { state.Mtx };
 		// Check state.RangeTables[alignment * 2 - 7] and state.RangeTables[alignment * 2 - 8], then check all others
 		// Essentially check the large and small range tables for the alignment first and then all other range tables
 
-		std::size_t idx0 = alignment * 2 - 8;
-		std::size_t idx1 = idx0 + 1;
-		AllocInfo   info {};
-		if (FindAlloc(state.RangeTables[idx1], address, info))
-			return info;
-		if (FindAlloc(state.RangeTables[idx0], address, info))
-			return info;
-		for (std::uint8_t i = 0; i < 120; ++i)
+		AllocInfo info {};
+		if (alignment < 4)
 		{
-			if (i == idx0 || i == idx1)
-				continue;
-			if (FindAlloc(state.RangeTables[i], address, info))
+			for (std::uint8_t i = 0; i < 120; ++i)
+			{
+				if (FindAlloc(state.RangeTables[i], address, info))
+					return info;
+			}
+		}
+		else
+		{
+			std::size_t idx0 = alignment * 2 - 8;
+			std::size_t idx1 = idx0 + 1;
+			if (FindAlloc(state.RangeTables[idx1], address, info))
 				return info;
+			if (FindAlloc(state.RangeTables[idx0], address, info))
+				return info;
+			for (std::uint8_t i = 0; i < 120; ++i)
+			{
+				if (i == idx0 || i == idx1)
+					continue;
+				if (FindAlloc(state.RangeTables[i], address, info))
+					return info;
+			}
 		}
 		return info;
 	}
