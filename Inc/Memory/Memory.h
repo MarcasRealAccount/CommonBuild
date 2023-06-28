@@ -1,8 +1,9 @@
 #pragma once
 
-#include <cstddef>
+#ifdef __cplusplus
+	#include <cstddef>
 
-#include <concepts>
+	#include <concepts>
 
 namespace Memory
 {
@@ -86,5 +87,53 @@ namespace Memory
 	[[nodiscard]] void* ECalloc(void* ptr, std::size_t newCount, std::size_t newSize) noexcept;
 	[[nodiscard]] void* EZCalloc(void* ptr, std::size_t newCount, std::size_t newSize) noexcept;
 
-	void Free(void* ptr);
+	void Free(void* ptr) noexcept;
 } // namespace Memory
+
+#else
+
+	#include <cstddef>
+
+	#if __STDC_VERSION__ > 202311L
+		#define NODISCARD [[nodiscard]]
+	#else
+		#define NODISCARD
+	#endif
+
+NODISCARD void* CBAlignedMalloc(size_t alignment, size_t size);
+NODISCARD void* AlignedZalloc(size_t alignment, size_t size);
+NODISCARD void* AlignedCalloc(size_t alignment, size_t count, size_t size);
+NODISCARD void* AlignedZCalloc(size_t alignment, size_t count, size_t size);
+
+NODISCARD void* AlignedRMalloc(void* ptr, size_t alignment, size_t newSize);
+NODISCARD void* AlignedRZalloc(void* ptr, size_t alignment, size_t newSize);
+NODISCARD void* AlignedRCalloc(void* ptr, size_t alignment, size_t newCount, size_t newSize);
+NODISCARD void* AlignedRZCalloc(void* ptr, size_t alignment, size_t newCount, size_t newSize);
+
+NODISCARD void* AlignedEMalloc(void* ptr, size_t alignment, size_t newSize);
+NODISCARD void* AlignedEZalloc(void* ptr, size_t alignment, size_t newSize);
+NODISCARD void* AlignedECalloc(void* ptr, size_t alignment, size_t newCount, size_t newSize);
+NODISCARD void* AlignedEZCalloc(void* ptr, size_t alignment, size_t newCount, size_t newSize);
+
+void AlignedFree(void* ptr, size_t alignment);
+
+NODISCARD void* Malloc(size_t size);
+NODISCARD void* Zalloc(size_t size);
+NODISCARD void* Calloc(size_t count, size_t size);
+NODISCARD void* ZCalloc(size_t count, size_t size);
+
+NODISCARD void* RMalloc(void* ptr, size_t newSize);
+NODISCARD void* RZalloc(void* ptr, size_t newSize);
+NODISCARD void* RCalloc(void* ptr, size_t newCount, size_t newSize);
+NODISCARD void* RZCalloc(void* ptr, size_t newCount, size_t newSize);
+
+NODISCARD void* EMalloc(void* ptr, size_t newSize);
+NODISCARD void* EZalloc(void* ptr, size_t newSize);
+NODISCARD void* ECalloc(void* ptr, size_t newCount, size_t newSize);
+NODISCARD void* EZCalloc(void* ptr, size_t newCount, size_t newSize);
+
+void Free(void* ptr);
+
+	#undef NODISCARD
+
+#endif

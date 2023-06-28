@@ -193,3 +193,136 @@ namespace Memory
 		return AlignedFree(ptr, 16);
 	}
 } // namespace Memory
+
+extern "C"
+{
+	void* CBAlignedMalloc(size_t alignment, size_t size)
+	{
+		return Memory::AlignedMalloc(alignment, size);
+	}
+
+	void* AlignedZalloc(size_t alignment, size_t size)
+	{
+		return Memory::AlignedZalloc(alignment, size);
+	}
+
+	void* AlignedCalloc(size_t alignment, size_t count, size_t size)
+	{
+		return Memory::AlignedCalloc(alignment, count, size);
+	}
+
+	void* AlignedZCalloc(size_t alignment, size_t count, size_t size)
+	{
+		return Memory::AlignedZCalloc(alignment, count, size);
+	}
+
+	void* AlignedRMalloc(void* ptr, size_t alignment, size_t newSize)
+	{
+		return Memory::AlignedRMalloc(ptr, alignment, newSize);
+	}
+
+	void* AlignedRZalloc(void* ptr, size_t alignment, size_t newSize)
+	{
+		return Memory::AlignedRZalloc(ptr, alignment, newSize);
+	}
+
+	void* AlignedRCalloc(void* ptr, size_t alignment, size_t newCount, size_t newSize)
+	{
+		return Memory::AlignedRCalloc(ptr, alignment, newCount, newSize);
+	}
+
+	void* AlignedRZCalloc(void* ptr, size_t alignment, size_t newCount, size_t newSize)
+	{
+		return Memory::AlignedRZCalloc(ptr, alignment, newCount, newSize);
+	}
+
+	void* AlignedEMalloc(void* ptr, size_t alignment, size_t newSize)
+	{
+		return Memory::AlignedEMalloc(ptr, alignment, newSize);
+	}
+
+	void* AlignedEZalloc(void* ptr, size_t alignment, size_t newSize)
+	{
+		return Memory::AlignedEZalloc(ptr, alignment, newSize);
+	}
+
+	void* AlignedECalloc(void* ptr, size_t alignment, size_t newCount, size_t newSize)
+	{
+		return Memory::AlignedECalloc(ptr, alignment, newCount, newSize);
+	}
+
+	void* AlignedEZCalloc(void* ptr, size_t alignment, size_t newCount, size_t newSize)
+	{
+		return Memory::AlignedEZCalloc(ptr, alignment, newCount, newSize);
+	}
+
+	void AlignedFree(void* ptr, size_t alignment)
+	{
+		return Memory::AlignedFree(ptr, alignment);
+	}
+
+	void* Malloc(size_t size)
+	{
+		return Memory::Malloc(size);
+	}
+
+	void* Zalloc(size_t size)
+	{
+		return Memory::Zalloc(size);
+	}
+
+	void* Calloc(size_t count, size_t size)
+	{
+		return Memory::Calloc(count, size);
+	}
+
+	void* ZCalloc(size_t count, size_t size)
+	{
+		return Memory::ZCalloc(count, size);
+	}
+
+	void* RMalloc(void* ptr, size_t newSize)
+	{
+		return Memory::RMalloc(ptr, newSize);
+	}
+
+	void* RZalloc(void* ptr, size_t newSize)
+	{
+		return Memory::RZalloc(ptr, newSize);
+	}
+
+	void* RCalloc(void* ptr, size_t newCount, size_t newSize)
+	{
+		return Memory::RCalloc(ptr, newCount, newSize);
+	}
+
+	void* RZCalloc(void* ptr, size_t newCount, size_t newSize)
+	{
+		return Memory::RZCalloc(ptr, newCount, newSize);
+	}
+
+	void* EMalloc(void* ptr, size_t newSize)
+	{
+		return Memory::EMalloc(ptr, newSize);
+	}
+
+	void* EZalloc(void* ptr, size_t newSize)
+	{
+		return Memory::EZalloc(ptr, newSize);
+	}
+
+	void* ECalloc(void* ptr, size_t newCount, size_t newSize)
+	{
+		return Memory::ECalloc(ptr, newCount, newSize);
+	}
+
+	void* EZCalloc(void* ptr, size_t newCount, size_t newSize)
+	{
+		return Memory::EZCalloc(ptr, newCount, newSize);
+	}
+
+	void Free(void* ptr)
+	{
+		return Memory::Free(ptr);
+	}
+}
