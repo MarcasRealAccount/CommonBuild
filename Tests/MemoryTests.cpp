@@ -2,6 +2,124 @@
 #include <Memory/Memory.h>
 #include <Testing/Testing.h>
 
+#include <Build.h>
+
+#if BUILD_IS_SYSTEM_WINDOWS
+	#include <cstdlib>
+#endif
+
+static void* Malloc(std::size_t size)
+{
+	return std::malloc(size);
+}
+
+static void* RMalloc(void* ptr, std::size_t newSize)
+{
+	return std::realloc(ptr, newSize);
+}
+
+static void Free(void* ptr)
+{
+	std::free(ptr);
+}
+
+static void* AlignedMalloc(std::size_t size, std::size_t alignment)
+{
+#if BUILD_IS_SYSTEM_WINDOWS
+	return _aligned_malloc(size, alignment);
+#else
+	void* ptr = Malloc(size + alignment);
+	return reinterpret_cast<void*>(Memory::AlignCeil(reinterpret_cast<std::uintptr_t>(ptr), alignment));
+#endif
+}
+
+static void* AlignedRMalloc(void* ptr, std::size_t newSize, std::size_t alignment)
+{
+#if BUILD_IS_SYSTEM_WINDOWS
+	return _aligned_realloc(ptr, newSize, alignment);
+#else
+	void* result = RMalloc(ptr, newSize + alignment);
+	return reinterpret_cast<void*>(Memory::AlignCeil(reinterpret_cast<std::uintptr_t>(result), alignment));
+#endif
+}
+
+static void AlignedFree(void* ptr, std::size_t alignment)
+{
+#if BUILD_IS_SYSTEM_WINDOWS
+	_aligned_free(ptr);
+#else
+	Free(ptr);
+#endif
+}
+
+static void* Zalloc(std::size_t size)
+{
+	void* ptr = Malloc(size);
+	std::memset(ptr, 0, size);
+	return ptr;
+}
+
+static void* Calloc(std::size_t count, std::size_t size)
+{
+	return Malloc(count * Memory::AlignCeil(size, 16));
+}
+
+static void* ZCalloc(std::size_t count, std::size_t size)
+{
+	void* ptr = Calloc(count, size);
+	std::memset(ptr, 0, count * Memory::AlignCeil(size, 16));
+	return ptr;
+}
+
+static void* RZalloc(void* ptr, std::size_t newSize)
+{
+	return RMalloc(ptr, newSize); // Can't memset new allocation to 0 sadly...
+}
+
+static void* RCalloc(void* ptr, std::size_t newCount, std::size_t newSize)
+{
+	return RMalloc(ptr, newCount * Memory::AlignCeil(newSize, 16));
+}
+
+static void* RZCalloc(void* ptr, std::size_t newCount, std::size_t newSize)
+{
+	return RCalloc(ptr, newCount, newSize); // Can't memset new allocation to 0 sadly...
+}
+
+static void* AlignedZalloc(std::size_t size, std::size_t alignment)
+{
+	void* ptr = AlignedMalloc(size, alignment);
+	std::memset(ptr, 0, size);
+	return ptr;
+}
+
+static void* AlignedCalloc(std::size_t count, std::size_t size, std::size_t alignment)
+{
+	return AlignedMalloc(count * Memory::AlignCeil(size, alignment), alignment);
+}
+
+static void* AlignedZCalloc(std::size_t count, std::size_t size, std::size_t alignment)
+{
+	void* ptr = AlignedCalloc(count, size, alignment);
+	std::memset(ptr, 0, count * Memory::AlignCeil(size, alignment));
+	return ptr;
+}
+
+static void* AlignedRZalloc(void* ptr, std::size_t newSize, std::size_t alignment)
+{
+	return AlignedRMalloc(ptr, newSize, alignment); // Can't memset new allocation to 0 sadly...
+}
+
+static void* AlignedRCalloc(void* ptr, std::size_t newCount, std::size_t newSize, std::size_t alignment)
+{
+	return AlignedRMalloc(ptr, newCount * Memory::AlignCeil(newSize, alignment), alignment);
+}
+
+static void* AlignedRZCalloc(void* ptr, std::size_t newCount, std::size_t newSize, std::size_t alignment)
+{
+	return AlignedRCalloc(ptr, newCount, newSize, alignment); // Can't memset new allocation to 0 sadly...
+}
+
 static void TestAlloc(void* (*alloc)(), void (*free)(void* data), void* (*realloc)(void* data) = nullptr, void (*test)(void* data) = nullptr)
 {
 	Allocator::DebugStats stats {};
@@ -538,25 +656,25 @@ void MemoryTests()
 	Testing::PopGroup();
 
 	double baselines[16];
-	baselines[0] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return std::malloc(1024); }, [](void* data) { std::free(data); }); });
-	baselines[1] = Testing::TimedBasline([]() { TimedTestAlloc([]() { void* data = std::malloc(1024); std::memset(data, 0, 1024); return data; }, [](void* data) { std::free(data); }); });
-	baselines[2] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return std::calloc(10, 1024); }, [](void* data) { std::free(data); }); });
-	baselines[3] = Testing::TimedBasline([]() { TimedTestAlloc([]() { void* data = std::calloc(10, 1024); std::memset(data, 0, 10240); return data; }, [](void* data) { std::free(data); }); });
+	baselines[0] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return Malloc(1024); }, [](void* data) { Free(data); }); });
+	baselines[1] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return Zalloc(1024); }, [](void* data) { Free(data); }); });
+	baselines[2] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return Calloc(10, 1024); }, [](void* data) { Free(data); }); });
+	baselines[3] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return ZCalloc(10, 1024); }, [](void* data) { Free(data); }); });
 
-	baselines[4] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return std::malloc(1024); }, [](void* data) { std::free(data); }, [](void* data) { return std::realloc(data, 2048); }); });
-	baselines[5] = Testing::TimedBasline([]() { TimedTestAlloc([]() { void* data = std::malloc(1024); std::memset(data, 0, 1024); return data; }, [](void* data) { std::free(data); }, [](void* data) { return std::realloc(data, 2048); }); });
-	baselines[6] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return std::calloc(10, 1024); }, [](void* data) { std::free(data); }, [](void* data) { return std::realloc(data, 10 * 2048); }); });
-	baselines[7] = Testing::TimedBasline([]() { TimedTestAlloc([]() { void* data = std::calloc(10, 1024); std::memset(data, 0, 10240); return data; }, [](void* data) { std::free(data); }, [](void* data) { return std::realloc(data, 10 * 2048); }); });
+	baselines[4] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return Malloc(1024); }, [](void* data) { Free(data); }, [](void* data) { return RMalloc(data, 2048); }); });
+	baselines[5] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return Zalloc(1024); }, [](void* data) { Free(data); }, [](void* data) { return RMalloc(data, 2048); }); });
+	baselines[6] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return Calloc(10, 1024); }, [](void* data) { Free(data); }, [](void* data) { return RCalloc(data, 10, 2048); }); });
+	baselines[7] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return ZCalloc(10, 1024); }, [](void* data) { Free(data); }, [](void* data) { return RCalloc(data, 10, 2048); }); });
 
-	baselines[8]  = Testing::TimedBasline([]() { TimedTestAlloc([]() { return _aligned_malloc(1024, 256); }, [](void* data) { _aligned_free(data); }); });
-	baselines[9]  = Testing::TimedBasline([]() { TimedTestAlloc([]() { void* data = _aligned_malloc(1024, 256); std::memset(data, 0, 1024); return data; }, [](void* data) { _aligned_free(data); }); });
-	baselines[10] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return _aligned_malloc(10 * 1024, 256); }, [](void* data) { _aligned_free(data); }); });
-	baselines[11] = Testing::TimedBasline([]() { TimedTestAlloc([]() { void* data = _aligned_malloc(10 * 1024, 256); std::memset(data, 0, 10240); return data; }, [](void* data) { _aligned_free(data); }); });
+	baselines[8]  = Testing::TimedBasline([]() { TimedTestAlloc([]() { return AlignedMalloc(1024, 256); }, [](void* data) { AlignedFree(data, 256); }); });
+	baselines[9]  = Testing::TimedBasline([]() { TimedTestAlloc([]() { return AlignedZalloc(1024, 256); }, [](void* data) { AlignedFree(data, 256); }); });
+	baselines[10] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return AlignedCalloc(10, 1024, 256); }, [](void* data) { AlignedFree(data, 256); }); });
+	baselines[11] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return AlignedZCalloc(10, 1024, 256); }, [](void* data) { AlignedFree(data, 256); }); });
 
-	baselines[12] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return _aligned_malloc(1024, 256); }, [](void* data) { _aligned_free(data); }, [](void* data) { return _aligned_realloc(data, 2048, 256); }); });
-	baselines[13] = Testing::TimedBasline([]() { TimedTestAlloc([]() { void* data = _aligned_malloc(1024, 256); std::memset(data, 0, 1024); return data; }, [](void* data) { _aligned_free(data); }, [](void* data) { return _aligned_realloc(data, 2048, 256); }); });
-	baselines[14] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return _aligned_malloc(10 * 1024, 256); }, [](void* data) { _aligned_free(data); }, [](void* data) { return _aligned_recalloc(data, 10, 2048, 256); }); });
-	baselines[15] = Testing::TimedBasline([]() { TimedTestAlloc([]() { void* data = _aligned_malloc(10 * 1024, 256); std::memset(data, 0, 10240); return data; }, [](void* data) { _aligned_free(data); }, [](void* data) { return _aligned_recalloc(data, 10, 2048, 256); }); });
+	baselines[12] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return AlignedMalloc(1024, 256); }, [](void* data) { AlignedFree(data, 256); }, [](void* data) { return AlignedRMalloc(data, 2048, 256); }); });
+	baselines[13] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return AlignedZalloc(1024, 256); }, [](void* data) { AlignedFree(data, 256); }, [](void* data) { return AlignedRMalloc(data, 2048, 256); }); });
+	baselines[14] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return AlignedCalloc(10, 1024, 256); }, [](void* data) { AlignedFree(data, 256); }, [](void* data) { return AlignedRCalloc(data, 10, 2048, 256); }); });
+	baselines[15] = Testing::TimedBasline([]() { TimedTestAlloc([]() { return AlignedZCalloc(10, 1024, 256); }, [](void* data) { AlignedFree(data, 256); }, [](void* data) { return AlignedRCalloc(data, 10, 2048, 256); }); });
 
 	auto basicSpeedTests = [&baselines]() {
 		Testing::TimedTest("Malloc Speed", baselines[0], []() { TimedTestAlloc([]() { return Memory::Malloc(1024); }, [](void* data) { Memory::Free(data); }); });
