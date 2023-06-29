@@ -876,7 +876,7 @@ namespace Allocator
 		Range& range = alloc.Range.Table->Ranges[i][j];
 
 		auto [k, l] = Search(range.FreeTable->Frees,
-							 alloc.Index - 1,
+							 alloc.Index + (alloc.Size >> alloc.Range.Table->Header.Alignment),
 							 state.FreePerArray,
 							 0,
 							 range.FreeTable->Header.Last,
@@ -894,7 +894,8 @@ namespace Allocator
 			return false;
 		if (freeRange.Size() > requiredSize)
 		{
-			freeRange.Start += static_cast<std::uint32_t>(requiredSize);
+			range.FreeTable->Header.Total -= requiredSize;
+			freeRange.Start               += static_cast<std::uint32_t>(requiredSize);
 
 			auto [m, n] = ReOrder(range.FreeTable->Frees,
 								  k * state.FreePerArray + l,
@@ -915,10 +916,12 @@ namespace Allocator
 			--range.FreeTable->Header.Last;
 		}
 
-		std::size_t m         = alloc.Index / state.UsedPerArray;
-		std::size_t n         = alloc.Index % state.UsedPerArray;
-		UsedRange&  usedRange = range.UsedTable->Used[m][n];
-		usedRange.End        += static_cast<std::uint32_t>(requiredSize);
+		std::size_t m                  = alloc.Index / state.UsedPerArray;
+		std::size_t n                  = alloc.Index % state.UsedPerArray;
+		UsedRange&  usedRange          = range.UsedTable->Used[m][n];
+		usedRange.End                 += static_cast<std::uint32_t>(requiredSize);
+		range.UsedTable->Header.Total += requiredSize;
+		state.DebugStats.Small.Bytes  += requiredSize << alloc.Range.Table->Header.Alignment;
 		if (newAlloc)
 		{
 			*newAlloc = {
@@ -1048,6 +1051,10 @@ namespace Allocator
 				}
 			}
 
+			auto& stat = state.DebugStats.Small;
+			--stat.Count;
+			stat.Bytes -= alloc.Size;
+
 			range.FreeTable->Header.Total += usedRangeSize;
 			range.UsedTable->Header.Total -= usedRangeSize;
 			std::size_t min                = alloc.Index;
@@ -1059,6 +1066,10 @@ namespace Allocator
 		}
 		case ERangeTableType::Large:
 		{
+			auto& stat = state.DebugStats.Large;
+			--stat.Count;
+			stat.Bytes -= range.Pages << state.PageAlign;
+
 			FreePages(reinterpret_cast<void*>(range.Address), range.Pages, false);
 			std::size_t min = alloc.Range.Range;
 			Move(table->Ranges, state.RangesPerArray, min + 1, table->Header.Last, min);

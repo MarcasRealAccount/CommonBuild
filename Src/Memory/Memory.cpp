@@ -314,42 +314,42 @@ namespace Memory
 
 	void* RMalloc(void* ptr, std::size_t newSize) noexcept
 	{
-		return AlignedRMalloc(ptr, 16, newSize);
+		return AlignedRMalloc(ptr, newSize, 16);
 	}
 
 	void* RZalloc(void* ptr, std::size_t newSize) noexcept
 	{
-		return AlignedRZalloc(ptr, 16, newSize);
+		return AlignedRZalloc(ptr, newSize, 16);
 	}
 
 	void* RCalloc(void* ptr, std::size_t newCount, std::size_t newSize) noexcept
 	{
-		return AlignedRCalloc(ptr, 16, newCount, newSize);
+		return AlignedRCalloc(ptr, newCount, newSize, 16);
 	}
 
 	void* RZCalloc(void* ptr, std::size_t newCount, std::size_t newSize) noexcept
 	{
-		return AlignedRZCalloc(ptr, 16, newCount, newSize);
+		return AlignedRZCalloc(ptr, newCount, newSize, 16);
 	}
 
 	void* EMalloc(void* ptr, std::size_t newSize) noexcept
 	{
-		return AlignedEMalloc(ptr, 16, newSize);
+		return AlignedEMalloc(ptr, newSize, 16);
 	}
 
 	void* EZalloc(void* ptr, std::size_t newSize) noexcept
 	{
-		return AlignedEZalloc(ptr, 16, newSize);
+		return AlignedEZalloc(ptr, newSize, 16);
 	}
 
 	void* ECalloc(void* ptr, std::size_t newCount, std::size_t newSize) noexcept
 	{
-		return AlignedECalloc(ptr, 16, newCount, newSize);
+		return AlignedECalloc(ptr, newCount, newSize, 16);
 	}
 
 	void* EZCalloc(void* ptr, std::size_t newCount, std::size_t newSize) noexcept
 	{
-		return AlignedEZCalloc(ptr, 16, newCount, newSize);
+		return AlignedEZCalloc(ptr, newCount, newSize, 16);
 	}
 
 	void Free(void* ptr) noexcept
