@@ -75,7 +75,7 @@ namespace Allocator
 		std::size_t ij = min % arraySize;
 		for (std::size_t i = min; i < max; ++i)
 		{
-			if (!comp(table[i][j], value))
+			if (comp(table[ii][ij], value))
 				break;
 			if (++ij > arraySize)
 			{
@@ -94,14 +94,15 @@ namespace Allocator
 
 		T original = std::move(table[i][j]);
 
-		auto [k, l]     = BinarySearch<T, T, Compare>(table, original, arraySize, min, max, comp);
-		std::size_t m   = k * arraySize + l;
-		std::size_t min = std::min(index + 1, m);
-		std::size_t max = std::max(index, m);
-		std::size_t to  = index < m ? index : m + 1;
-		Move(table, arraySize, min, max, to);
+		auto [k, l]         = BinarySearch<T, T, Compare>(table, original, arraySize, min, max, comp);
+		std::size_t m       = k * arraySize + l;
+		std::size_t moveMin = std::min(index + 1, m);
+		std::size_t moveMax = std::max(index, m);
+		std::size_t to      = index < m ? index : m + 1;
+		Move(table, arraySize, moveMin, moveMax, to);
 
 		table[k][l] = std::move(original);
+		return { k, l };
 	}
 
 	enum class EIterateStatus
@@ -135,12 +136,14 @@ namespace Allocator
 	template <class T>
 	static void MoveBackward(T** table, std::size_t arraySize, std::size_t min, std::size_t max, std::size_t to)
 	{
-		std::size_t  size = max - min;
-		std::size_t  j    = to + size;
-		std::int64_t ii   = max / arraySize;
-		std::int64_t ij   = max % arraySize;
-		std::int64_t ji   = j / arraySize;
-		std::int64_t jj   = j % arraySize;
+		using ssize_t = std::make_signed_t<std::size_t>;
+
+		std::size_t size = max - min;
+		std::size_t j    = to + size;
+		ssize_t     ii   = max / arraySize;
+		ssize_t     ij   = max % arraySize;
+		ssize_t     ji   = j / arraySize;
+		ssize_t     jj   = j % arraySize;
 		for (std::size_t i = max; i > min; --i)
 		{
 			table[ji][jj] = table[ii][ij];
@@ -161,10 +164,10 @@ namespace Allocator
 	template <class T>
 	static void MoveForward(T** table, std::size_t arraySize, std::size_t min, std::size_t max, std::size_t to)
 	{
-		std::int64_t ii = max / arraySize;
-		std::int64_t ij = max % arraySize;
-		std::int64_t ji = to / arraySize;
-		std::int64_t jj = to % arraySize;
+		std::size_t ii = max / arraySize;
+		std::size_t ij = max % arraySize;
+		std::size_t ji = to / arraySize;
+		std::size_t jj = to % arraySize;
 		for (std::size_t i = min; i < max; ++i)
 		{
 			table[ji][jj] = table[ii][ij];
@@ -202,7 +205,7 @@ namespace Allocator
 		}
 #endif
 
-		PageAlign = std::countr_zero(PageSize);
+		PageAlign = static_cast<std::uint8_t>(std::countr_zero(PageSize));
 
 		ArrayPages = Memory::AlignCountCeil(1ULL << 20, PageSize);
 		TablePages = Memory::AlignCountCeil(1ULL << 16, PageSize);
@@ -220,7 +223,10 @@ namespace Allocator
 			for (std::uint8_t type = 0; type < 2; ++type)
 			{
 				std::uint8_t offset = (alignment - 4) * 2 + type;
-				RangeTables[offset] = reinterpret_cast<RangeTable*>(reinterpret_cast<std::uint8_t*>(baseRangeTable) + offset * (TablePages << PageAlign));
+				RangeTable*  table = RangeTables[offset] = reinterpret_cast<RangeTable*>(reinterpret_cast<std::uint8_t*>(baseRangeTable) + offset * (TablePages << PageAlign));
+
+				table->Header.Type      = static_cast<ERangeTableType>(type);
+				table->Header.Alignment = alignment;
 			}
 		}
 	}
@@ -235,13 +241,14 @@ namespace Allocator
 			RangeTable* table = RangeTables[offset];
 			{
 				auto lock2 = ScopedLock<RSM> { table->Header.Mtx };
-				Iterate(table->Ranges, RangesPerArray, 0, table->Header.Last, [this](Range& range, std::pair<std::size_t, std::size_t> index) -> EIterateStatus {
+				Iterate(table->Ranges, RangesPerArray, 0, table->Header.Last, [this](Range& range, [[maybe_unused]] std::pair<std::size_t, std::size_t> index) -> EIterateStatus {
 					FreePages(reinterpret_cast<void*>(range.Address), range.Pages, false);
 					for (std::size_t i = 0; i < range.UsedTable->Header.LastArray; ++i)
 						FreePages(range.UsedTable->Used[i], ArrayPages);
 					for (std::size_t i = 0; i < range.FreeTable->Header.LastArray; ++i)
 						FreePages(range.FreeTable->Frees[i], ArrayPages);
 					FreePages(range.UsedTable, 2 * TablePages);
+					return EIterateStatus::Continue;
 				});
 			}
 			for (std::size_t i = 0; i < table->Header.LastArray; ++i)
@@ -331,11 +338,11 @@ namespace Allocator
 			std::uint64_t j     = Range.Range % state.RangeArraysPerTable;
 
 			auto* ranges = Range.Table->Ranges[i];
-			auto& range  = ranges[j];
-			if (range.UsedTable)
-				range.UsedTable->Header.Mtx.Lock();
-			if (range.FreeTable)
-				range.FreeTable->Header.Mtx.Lock();
+			auto& rng    = ranges[j];
+			if (rng.UsedTable)
+				rng.UsedTable->Header.Mtx.Lock();
+			if (rng.FreeTable)
+				rng.FreeTable->Header.Mtx.Lock();
 		}
 	}
 
@@ -484,7 +491,7 @@ namespace Allocator
 
 	std::uint8_t FastAlign(std::size_t alignment)
 	{
-		return std::countr_zero(alignment);
+		return static_cast<std::uint8_t>(std::countr_zero(alignment));
 	}
 
 	std::size_t CountedSize(std::size_t count, std::size_t size, std::uint8_t alignment)
@@ -516,13 +523,17 @@ namespace Allocator
 									   return range.Start < element;
 								   });
 
-		UsedRange& usedRange = table->Used[i][j];
+		UsedRange* pUsedRanges = table->Used[i];
+		if (!pUsedRanges)
+			return false;
+
+		UsedRange& usedRange = pUsedRanges[j];
 		if (element >= usedRange.Start && element <= usedRange.End)
 		{
 			info = {
-				range.Address + usedRange.Start << rangeTable->Header.Alignment,
+				range.Address + (static_cast<std::size_t>(usedRange.Start) << rangeTable->Header.Alignment),
 				usedRange.Size() << rangeTable->Header.Alignment,
-				i * state.UsedPerArray + j,
+				static_cast<std::uint32_t>(i * state.UsedPerArray + j),
 				{rangeTable, rangeIndex}
 			};
 			return true;
@@ -543,7 +554,11 @@ namespace Allocator
 									   return range.Address < address;
 								   });
 
-		Range& range = table->Ranges[i][j];
+		Range* pRanges = table->Ranges[i];
+		if (!pRanges)
+			return false;
+
+		Range& range = pRanges[j];
 		if (address >= range.Address && address < range.Address + (range.Pages << state.PageAlign))
 		{
 			switch (table->Header.Type)
@@ -695,9 +710,9 @@ namespace Allocator
 			++usedTable->Header.Last;
 
 			info = {
-				range.Address + start << table->Header.Alignment,
+				range.Address + (static_cast<std::size_t>(start) << table->Header.Alignment),
 				usedRange.Size() << table->Header.Alignment,
-				n * state.UsedPerArray + o,
+				static_cast<std::uint32_t>(n * state.UsedPerArray + o),
 				{table, index.first * state.RangesPerArray + index.second}
 			};
 			auto& stat = state.DebugStats.Small;
@@ -767,7 +782,7 @@ namespace Allocator
 
 			info = {
 				range.Address,
-				allocSize << table->Header.Alignment,
+				static_cast<std::size_t>(allocSize) << table->Header.Alignment,
 				0,
 				{table, i * state.RangesPerArray + j}
 			};
@@ -836,8 +851,7 @@ namespace Allocator
 		if (!alloc.Address || !alloc.Range.Table)
 			return false;
 
-		State&      state = s_State;
-		std::size_t size  = AllocSize(newSize, alloc.Range.Table->Header.Alignment);
+		std::size_t size = AllocSize(newSize, alloc.Range.Table->Header.Alignment);
 		return size < (alloc.Size >> 1) || size > alloc.Size;
 	}
 
@@ -862,12 +876,12 @@ namespace Allocator
 		Range& range = alloc.Range.Table->Ranges[i][j];
 
 		auto [k, l] = Search(range.FreeTable->Frees,
-							 alloc.Index,
+							 alloc.Index - 1,
 							 state.FreePerArray,
 							 0,
 							 range.FreeTable->Header.Last,
 							 [](FreeRange range, std::uint32_t index) -> bool {
-								 return range.Start < index;
+								 return range.Start == index;
 							 });
 
 		FreeRange&  freeRange = range.FreeTable->Frees[k][l];
@@ -880,7 +894,7 @@ namespace Allocator
 			return false;
 		if (freeRange.Size() > requiredSize)
 		{
-			freeRange.Start += requiredSize;
+			freeRange.Start += static_cast<std::uint32_t>(requiredSize);
 
 			auto [m, n] = ReOrder(range.FreeTable->Frees,
 								  k * state.FreePerArray + l,
@@ -904,7 +918,7 @@ namespace Allocator
 		std::size_t m         = alloc.Index / state.UsedPerArray;
 		std::size_t n         = alloc.Index % state.UsedPerArray;
 		UsedRange&  usedRange = range.UsedTable->Used[m][n];
-		usedRange.End        += requiredSize;
+		usedRange.End        += static_cast<std::uint32_t>(requiredSize);
 		if (newAlloc)
 		{
 			*newAlloc = {
@@ -944,20 +958,20 @@ namespace Allocator
 								 0,
 								 range.FreeTable->Header.Last,
 								 [](FreeRange range, std::uint32_t index) -> bool {
-									 return range.End < index;
+									 return range.End == index;
 								 });
 
 			auto [o, p] = Search(range.FreeTable->Frees,
-								 usedRange.End,
+								 usedRange.End + 1,
 								 state.FreePerArray,
 								 0,
 								 range.FreeTable->Header.Last,
 								 [](FreeRange range, std::uint32_t index) -> bool {
-									 return range.Start < index;
+									 return range.Start == index;
 								 });
 
-			FreeRange lowerFree = range.FreeTable->Frees[m][n];
-			FreeRange upperFree = range.FreeTable->Frees[o][p];
+			FreeRange& lowerFree = range.FreeTable->Frees[m][n];
+			FreeRange& upperFree = range.FreeTable->Frees[o][p];
 
 			std::size_t usedRangeSize = usedRange.Size();
 			if (lowerFree.End == usedRange.Start - 1)
@@ -1037,6 +1051,8 @@ namespace Allocator
 			range.FreeTable->Header.Total += usedRangeSize;
 			range.UsedTable->Header.Total -= usedRangeSize;
 			std::size_t min                = alloc.Index;
+			usedRange.Start                = 0;
+			usedRange.End                  = 0;
 			Move(range.UsedTable->Used, state.UsedPerArray, min + 1, range.UsedTable->Header.Last, min);
 			--range.UsedTable->Header.Last;
 			break;

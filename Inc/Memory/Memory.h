@@ -4,6 +4,7 @@
 	#include <cstddef>
 
 	#include <concepts>
+	#include <bit>
 
 namespace Memory
 {
@@ -40,7 +41,7 @@ namespace Memory
 		auto mask = alignment - 1;
 		auto val  = value + mask;
 		if ((alignment & mask) == 0)
-			return val >> alignment;
+			return val >> std::countr_zero(alignment);
 		else
 			return val / alignment;
 	}
@@ -50,7 +51,7 @@ namespace Memory
 	{
 		auto mask = alignment - 1;
 		if ((alignment & mask) == 0)
-			return value >> alignment;
+			return value >> std::countr_zero(alignment);
 		else
 			return value / alignment;
 	}

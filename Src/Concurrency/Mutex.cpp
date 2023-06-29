@@ -82,7 +82,6 @@ namespace Concurrency
 
 	void SharedMutex::LockShared() noexcept
 	{
-		std::uint64_t tid = GetThreadID();
 		std::uint64_t val = m_Value.load();
 		while (val & 0x8000'0000 && !m_Value.compare_exchange_weak(val, val + 1))
 		{
@@ -101,7 +100,6 @@ namespace Concurrency
 
 	bool SharedMutex::TryLockShared() noexcept
 	{
-		std::uint64_t tid = GetThreadID();
 		std::uint64_t val = m_Value.load();
 		return !(val & 0x8000'0000) && m_Value.compare_exchange_weak(val, val + 1);
 	}
@@ -144,7 +142,7 @@ namespace Concurrency
 			m_Value.fetch_add(1ULL);
 			return;
 		}
-		while (val & 0x8000'0000 && !m_Value.compare_exchange_weak(val, val + 1))
+		while (!(!(val & 0x8000'0000) && m_Value.compare_exchange_weak(val, val + 1)))
 		{
 			m_Value.wait(val);
 			val = m_Value.load();
@@ -186,7 +184,8 @@ namespace Concurrency
 
 	void RecursiveSharedMutex::UnlockShared() noexcept
 	{
-		m_Value.fetch_sub(1ULL);
+		if ((m_Value.fetch_sub(1ULL) & 0x7FFF'FFFF) == 1)
+			m_Value.store(0ULL);
 		m_Value.notify_all();
 	}
 } // namespace Concurrency

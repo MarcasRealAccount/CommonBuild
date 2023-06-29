@@ -129,7 +129,7 @@ namespace Concurrency
 	std::size_t TryLock(Mutexes&... mutexes) noexcept
 	{
 		std::size_t count = 0;
-		(count += mutexes.TryLock() ? 1 : 0, ...);
+		((count += mutexes.TryLock() ? 1 : 0), ...);
 		return count;
 	}
 
@@ -137,7 +137,7 @@ namespace Concurrency
 	std::size_t TryLockShared(Mutexes&... mutexes) noexcept
 	{
 		std::size_t count = 0;
-		(count += mutexes.TryLockShared() ? 1 : 0, ...);
+		((count += mutexes.TryLockShared() ? 1 : 0), ...);
 		return count;
 	}
 
@@ -194,7 +194,7 @@ namespace Concurrency
 
 		~ScopedSharedLock() noexcept
 		{
-			Unlock(std::make_index_sequence<sizeof...(Mutexes)>);
+			Unlock(std::make_index_sequence<sizeof...(Mutexes)> {});
 		}
 
 		ScopedSharedLock(const ScopedSharedLock&)            = delete;
