@@ -221,7 +221,6 @@ void MemoryTests()
 														 Testing::Fail();
 												 } }); });
 
-
 		Testing::Test("Malloc 1024x 1 KiB", []() { TestMultiAlloc<1024>([]() { return Memory::Malloc(1024); }, [](void* data) { Memory::Free(data); }); });
 		Testing::Test("RMalloc 1024x 1 KiB -> 2 KiB", []() { TestMultiAlloc<1024>([]() { return Memory::Malloc(1024); }, [](void* data) { Memory::Free(data); }, [](void* data) { return Memory::RMalloc(data, 2048); }); });
 		Testing::Test("Zalloc 1024x 1 KiB",
@@ -413,6 +412,105 @@ void MemoryTests()
 									   [](void* data) { Memory::AlignedFree(data, 256); },
 									   [](void* data) { return Memory::AlignedRZCalloc(data, 10, 2048 << 10, 256); },
 									   [](void* data) {
+												 std::size_t* pData = reinterpret_cast<std::size_t*>(data);
+												 for (std::size_t i = 0; i < 2621440; ++i)
+												 {
+													 if (pData[i] != 0)
+														 Testing::Fail();
+												 } }); });
+
+
+		Testing::Test("AlignedMalloc 1024x 1 KiB", []() { TestMultiAlloc<1024>([]() { return Memory::AlignedMalloc(256, 1024); }, [](void* data) { Memory::AlignedFree(data, 256); }); });
+		Testing::Test("AlignedRMalloc 1024x 1 KiB -> 2 KiB", []() { TestMultiAlloc<1024>([]() { return Memory::AlignedMalloc(256, 1024); }, [](void* data) { Memory::AlignedFree(data, 256); }, [](void* data) { return Memory::AlignedRMalloc(data, 2048, 256); }); });
+		Testing::Test("AlignedZalloc 1024x 1 KiB",
+					  []() { TestMultiAlloc<1024>([]() { return Memory::AlignedZalloc(256, 1024); },
+												  [](void* data) { Memory::AlignedFree(data, 256); },
+												  nullptr,
+												  [](void* data) {
+												 std::size_t* pData = reinterpret_cast<std::size_t*>(data);
+												 for (std::size_t i = 0; i < 128; ++i)
+												 {
+													 if (pData[i] != 0)
+														 Testing::Fail();
+												 } }); });
+		Testing::Test("AlignedRZalloc 1024x 1 KiB -> 2 KiB",
+					  []() { TestMultiAlloc<1024>([]() { return Memory::AlignedZalloc(256, 1024); },
+												  [](void* data) { Memory::AlignedFree(data, 256); },
+												  [](void* data) { return Memory::AlignedRZalloc(data, 2048, 256); },
+												  [](void* data) {
+												 std::size_t* pData = reinterpret_cast<std::size_t*>(data);
+												 for (std::size_t i = 0; i < 256; ++i)
+												 {
+													 if (pData[i] != 0)
+														 Testing::Fail();
+												 } }); });
+		Testing::Test("AlignedCalloc 1024x 10x 1 KiB", []() { TestMultiAlloc<1024>([]() { return Memory::AlignedCalloc(256, 10, 1024); }, [](void* data) { Memory::AlignedFree(data, 256); }); });
+		Testing::Test("AlignedRCalloc 1024x 10x 1 KiB -> 10x 2 KiB", []() { TestMultiAlloc<1024>([]() { return Memory::AlignedCalloc(256, 10, 1024); }, [](void* data) { Memory::AlignedFree(data, 256); }, [](void* data) { return Memory::AlignedRCalloc(data, 10, 2048, 256); }); });
+		Testing::Test("AlignedZCalloc 10x 1 KiB",
+					  []() { TestMultiAlloc<1024>([]() { return Memory::AlignedZCalloc(256, 10, 1024); },
+												  [](void* data) { Memory::AlignedFree(data, 256); },
+												  nullptr,
+												  [](void* data) {
+												 std::size_t* pData = reinterpret_cast<std::size_t*>(data);
+												 for (std::size_t i = 0; i < 1280; ++i)
+												 {
+													 if (pData[i] != 0)
+														 Testing::Fail();
+												 } }); });
+		Testing::Test("AlignedRZCalloc 10x 1 KiB -> 10x 2 KiB",
+					  []() { TestMultiAlloc<1024>([]() { return Memory::AlignedZCalloc(256, 10, 1024); },
+												  [](void* data) { Memory::AlignedFree(data, 256); },
+												  [](void* data) { return Memory::AlignedRZCalloc(data, 10, 2048, 256); },
+												  [](void* data) {
+												 std::size_t* pData = reinterpret_cast<std::size_t*>(data);
+												 for (std::size_t i = 0; i < 2560; ++i)
+												 {
+													 if (pData[i] != 0)
+														 Testing::Fail();
+												 } }); });
+
+		Testing::Test("AlignedMalloc 1 MiB", []() { TestMultiAlloc<1024>([]() { return Memory::AlignedMalloc(256, 1024 << 10); }, [](void* data) { Memory::AlignedFree(data, 256); }); });
+		Testing::Test("AlignedRMalloc 1 MiB -> 2 MiB", []() { TestMultiAlloc<1024>([]() { return Memory::AlignedMalloc(256, 1024 << 10); }, [](void* data) { Memory::AlignedFree(data, 256); }, [](void* data) { return Memory::AlignedRMalloc(data, 2048 << 10, 256); }); });
+		Testing::Test("AlignedZalloc 1 MiB",
+					  []() { TestMultiAlloc<1024>([]() { return Memory::AlignedZalloc(256, 1024 << 10); },
+												  [](void* data) { Memory::AlignedFree(data, 256); },
+												  nullptr,
+												  [](void* data) {
+												 std::size_t* pData = reinterpret_cast<std::size_t*>(data);
+												 for (std::size_t i = 0; i < 131072; ++i)
+												 {
+													 if (pData[i] != 0)
+														 Testing::Fail();
+												 } }); });
+		Testing::Test("AlignedRZalloc 1 MiB -> 2 MiB",
+					  []() { TestMultiAlloc<1024>([]() { return Memory::AlignedZalloc(256, 1024 << 10); },
+												  [](void* data) { Memory::AlignedFree(data, 256); },
+												  [](void* data) { return Memory::AlignedRZalloc(data, 2048 << 10, 256); },
+												  [](void* data) {
+												 std::size_t* pData = reinterpret_cast<std::size_t*>(data);
+												 for (std::size_t i = 0; i < 262144; ++i)
+												 {
+													 if (pData[i] != 0)
+														 Testing::Fail();
+												 } }); });
+		Testing::Test("AlignedCalloc 10x 1 MiB", []() { TestMultiAlloc<1024>([]() { return Memory::AlignedCalloc(256, 10, 1024 << 10); }, [](void* data) { Memory::AlignedFree(data, 256); }); });
+		Testing::Test("AlignedRCalloc 10x 1 MiB -> 10x 2 MiB", []() { TestMultiAlloc<1024>([]() { return Memory::AlignedCalloc(256, 10, 1024 << 10); }, [](void* data) { Memory::AlignedFree(data, 256); }, [](void* data) { return Memory::AlignedRCalloc(data, 10, 2048 << 10, 256); }); });
+		Testing::Test("AlignedZCalloc 10x 1 MiB",
+					  []() { TestMultiAlloc<1024>([]() { return Memory::AlignedZCalloc(256, 10, 1024 << 10); },
+												  [](void* data) { Memory::AlignedFree(data, 256); },
+												  nullptr,
+												  [](void* data) {
+												 std::size_t* pData = reinterpret_cast<std::size_t*>(data);
+												 for (std::size_t i = 0; i < 1310720; ++i)
+												 {
+													 if (pData[i] != 0)
+														 Testing::Fail();
+												 } }); });
+		Testing::Test("AlignedRZCalloc 10x 1 MiB -> 10x 2 MiB",
+					  []() { TestMultiAlloc<1024>([]() { return Memory::AlignedZCalloc(256, 10, 1024 << 10); },
+												  [](void* data) { Memory::AlignedFree(data, 256); },
+												  [](void* data) { return Memory::AlignedRZCalloc(data, 10, 2048 << 10, 256); },
+												  [](void* data) {
 												 std::size_t* pData = reinterpret_cast<std::size_t*>(data);
 												 for (std::size_t i = 0; i < 2621440; ++i)
 												 {
