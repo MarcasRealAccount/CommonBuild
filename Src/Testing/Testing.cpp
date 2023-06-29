@@ -202,6 +202,7 @@ namespace Testing
 			if ((cur - start) >= 100ms)
 				break;
 			test();
+			++iters;
 		}
 		auto end = Clock::now();
 		return std::chrono::duration_cast<std::chrono::duration<double, std::nano>>(end - start).count() / iters;
