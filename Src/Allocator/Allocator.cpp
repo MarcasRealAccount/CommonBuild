@@ -49,6 +49,12 @@ namespace Allocator
 		// TODO(MarcasRealAccount): Push message
 	}
 
+	template <class T>
+	static std::int32_t ValueComp(T a, T b)
+	{
+		return a < b ? -1 : (a > b ? 1 : 0);
+	}
+
 	template <class T, class U, class Compare>
 	static std::pair<std::size_t, std::size_t> BinarySearch(T** table, const U& value, std::size_t arraySize, std::size_t min, std::size_t max, Compare comp)
 	{
@@ -57,10 +63,38 @@ namespace Allocator
 			std::size_t mid = min + ((max - min) >> 1);
 			std::size_t i   = mid / arraySize;
 			std::size_t j   = mid % arraySize;
-			if (comp(table[i][j], value))
+			if (comp(table[i][j], value) < 0)
 				min = mid + 1;
 			else
 				max = mid;
+		}
+		return {
+			min / arraySize,
+			min % arraySize
+		};
+	}
+
+	template <class T, class U, class Compare>
+	static std::pair<std::size_t, std::size_t> BinarySearchLess(T** table, const U& value, std::size_t arraySize, std::size_t min, std::size_t max, Compare comp)
+	{
+		if (min == max)
+		{
+			return {
+				min / arraySize,
+				max % arraySize
+			};
+		}
+
+		max = std::max(min, max - 1);
+		while (min != max)
+		{
+			std::size_t mid = min + ((max - min + 1) >> 1);
+			std::size_t i   = mid / arraySize;
+			std::size_t j   = mid % arraySize;
+			if (comp(table[i][j], value) > 0)
+				max = mid - 1;
+			else
+				min = mid;
 		}
 		return {
 			min / arraySize,
@@ -75,7 +109,7 @@ namespace Allocator
 		std::size_t ij = min % arraySize;
 		for (std::size_t i = min; i < max; ++i)
 		{
-			if (comp(table[ii][ij], value))
+			if (comp(table[ii][ij], value) == 0)
 				break;
 			if (++ij > arraySize)
 			{
@@ -164,8 +198,8 @@ namespace Allocator
 	template <class T>
 	static void MoveForward(T** table, std::size_t arraySize, std::size_t min, std::size_t max, std::size_t to)
 	{
-		std::size_t ii = max / arraySize;
-		std::size_t ij = max % arraySize;
+		std::size_t ii = min / arraySize;
+		std::size_t ij = min % arraySize;
 		std::size_t ji = to / arraySize;
 		std::size_t jj = to % arraySize;
 		for (std::size_t i = min; i < max; ++i)
@@ -514,14 +548,14 @@ namespace Allocator
 		State&     state = s_State;
 		UsedTable* table = range.UsedTable;
 
-		auto [i, j] = BinarySearch(table->Used,
-								   element,
-								   state.UsedPerArray,
-								   0,
-								   table->Header.Last,
-								   [](UsedRange range, std::uint32_t element) -> bool {
-									   return range.Start < element;
-								   });
+		auto [i, j] = BinarySearchLess(table->Used,
+									   element,
+									   state.UsedPerArray,
+									   0,
+									   table->Header.Last,
+									   [](UsedRange range, std::uint32_t element) {
+										   return ValueComp(range.Start, element);
+									   });
 
 		UsedRange* pUsedRanges = table->Used[i];
 		if (!pUsedRanges)
@@ -545,14 +579,14 @@ namespace Allocator
 	{
 		State& state = s_State;
 
-		auto [i, j] = BinarySearch(table->Ranges,
-								   address,
-								   state.RangesPerArray,
-								   0,
-								   table->Header.Last,
-								   [](const Range& range, std::uintptr_t address) -> bool {
-									   return range.Address < address;
-								   });
+		auto [i, j] = BinarySearchLess(table->Ranges,
+									   address,
+									   state.RangesPerArray,
+									   0,
+									   table->Header.Last,
+									   [](const Range& range, std::uintptr_t address) {
+										   return ValueComp(range.Address, address);
+									   });
 
 		Range* pRanges = table->Ranges[i];
 		if (!pRanges)
@@ -652,8 +686,8 @@ namespace Allocator
 									   state.FreePerArray,
 									   0,
 									   freeTable->Header.Last,
-									   [](FreeRange range, std::uint16_t allocSize) -> bool {
-										   return range.Size() < allocSize;
+									   [](FreeRange range, std::uint16_t allocSize) {
+										   return ValueComp<std::size_t>(range.Size(), allocSize);
 									   });
 
 			FreeRange&  freeRange = freeTable->Frees[l][m];
@@ -673,8 +707,8 @@ namespace Allocator
 									  state.FreePerArray,
 									  0,
 									  freeTable->Header.Last,
-									  [](FreeRange range, FreeRange other) -> bool {
-										  return range.Size() < other.Size();
+									  [](FreeRange range, FreeRange other) {
+										  return ValueComp(range.Size(), other.Size());
 									  });
 
 				l = n;
@@ -682,6 +716,8 @@ namespace Allocator
 			}
 			else
 			{
+				freeRange.Start = 0;
+				freeRange.End   = 0;
 				std::size_t min = l * state.FreePerArray + m;
 				Move(freeTable->Frees, state.FreePerArray, min + 1, freeTable->Header.Last, min);
 				--freeTable->Header.Last;
@@ -692,8 +728,8 @@ namespace Allocator
 									   state.UsedPerArray,
 									   0,
 									   usedTable->Header.Last,
-									   [](UsedRange range, std::uint32_t start) -> bool {
-										   return range.Start < start;
+									   [](UsedRange range, std::uint32_t start) {
+										   return ValueComp(range.Start, start);
 									   });
 			{
 				if (usedTable->Header.Last == usedTable->Header.LastArray * state.UsedPerArray)
@@ -737,8 +773,8 @@ namespace Allocator
 									   state.RangesPerArray,
 									   0,
 									   table->Header.Last,
-									   [](Range& range, std::uintptr_t address) -> bool {
-										   return range.Address < address;
+									   [](Range& range, std::uintptr_t address) {
+										   return ValueComp(range.Address, address);
 									   });
 			{
 				if (table->Header.Last == table->Header.LastArray * state.RangesPerArray)
@@ -772,7 +808,7 @@ namespace Allocator
 				freeTable->Header.Last      = 1;
 				freeTable->Header.LastArray = 1;
 				freeTable->Frees[0]         = static_cast<FreeRange*>(AllocatePages(state.ArrayPages));
-				freeTable->Frees[0][0]      = { allocSize, static_cast<std::uint32_t>(maxElement) };
+				freeTable->Frees[0][0]      = { allocSize, static_cast<std::uint32_t>(maxElement) - 1 };
 			}
 			else
 			{
@@ -813,8 +849,8 @@ namespace Allocator
 								   state.RangesPerArray,
 								   0,
 								   table->Header.Last,
-								   [](const Range& range, std::uintptr_t address) -> bool {
-									   return range.Address < address;
+								   [](const Range& range, std::uintptr_t address) {
+									   return ValueComp(range.Address, address);
 								   });
 		{
 			if (table->Header.Last == table->Header.LastArray * state.RangesPerArray)
@@ -880,8 +916,8 @@ namespace Allocator
 							 state.FreePerArray,
 							 0,
 							 range.FreeTable->Header.Last,
-							 [](FreeRange range, std::uint32_t index) -> bool {
-								 return range.Start == index;
+							 [](FreeRange range, std::uint32_t index) {
+								 return ValueComp(range.Start, index);
 							 });
 
 		FreeRange&  freeRange = range.FreeTable->Frees[k][l];
@@ -902,8 +938,8 @@ namespace Allocator
 								  state.FreePerArray,
 								  0,
 								  range.FreeTable->Header.Last,
-								  [](FreeRange range, FreeRange other) -> bool {
-									  return range.Size() < other.Size();
+								  [](FreeRange range, FreeRange other) {
+									  return ValueComp(range.Size(), other.Size());
 								  });
 
 			k = m;
@@ -911,6 +947,8 @@ namespace Allocator
 		}
 		else
 		{
+			freeRange.Start = 0;
+			freeRange.End   = 0;
 			std::size_t min = k * state.FreePerArray + l;
 			Move(range.FreeTable->Frees, state.FreePerArray, min + 1, range.FreeTable->Header.Last, min);
 			--range.FreeTable->Header.Last;
@@ -960,8 +998,8 @@ namespace Allocator
 								 state.FreePerArray,
 								 0,
 								 range.FreeTable->Header.Last,
-								 [](FreeRange range, std::uint32_t index) -> bool {
-									 return range.End == index;
+								 [](FreeRange range, std::uint32_t index) {
+									 return ValueComp(range.End, index);
 								 });
 
 			auto [o, p] = Search(range.FreeTable->Frees,
@@ -969,8 +1007,8 @@ namespace Allocator
 								 state.FreePerArray,
 								 0,
 								 range.FreeTable->Header.Last,
-								 [](FreeRange range, std::uint32_t index) -> bool {
-									 return range.Start == index;
+								 [](FreeRange range, std::uint32_t index) {
+									 return ValueComp(range.Start, index);
 								 });
 
 			FreeRange& lowerFree = range.FreeTable->Frees[m][n];
@@ -983,6 +1021,8 @@ namespace Allocator
 				{
 					lowerFree.End = upperFree.End;
 					{
+						upperFree.Start = 0;
+						upperFree.End   = 0;
 						std::size_t min = o * state.FreePerArray + p;
 						Move(range.FreeTable->Frees, state.UsedPerArray, min + 1, range.FreeTable->Header.Last, min);
 					}
@@ -992,8 +1032,8 @@ namespace Allocator
 										  state.FreePerArray,
 										  0,
 										  range.FreeTable->Header.Last,
-										  [](FreeRange range, FreeRange other) -> bool {
-											  return range.Size() < other.Size();
+										  [](FreeRange range, FreeRange other) {
+											  return ValueComp(range.Size(), other.Size());
 										  });
 				}
 				else
@@ -1005,8 +1045,8 @@ namespace Allocator
 										  state.FreePerArray,
 										  0,
 										  range.FreeTable->Header.Last,
-										  [](FreeRange range, FreeRange other) -> bool {
-											  return range.Size() < other.Size();
+										  [](FreeRange range, FreeRange other) {
+											  return ValueComp(range.Size(), other.Size());
 										  });
 				}
 			}
@@ -1021,8 +1061,8 @@ namespace Allocator
 										  state.FreePerArray,
 										  0,
 										  range.FreeTable->Header.Last,
-										  [](FreeRange range, FreeRange other) -> bool {
-											  return range.Size() < other.Size();
+										  [](FreeRange range, FreeRange other) {
+											  return ValueComp(range.Size(), other.Size());
 										  });
 				}
 				else
@@ -1032,8 +1072,8 @@ namespace Allocator
 											   state.FreePerArray,
 											   0,
 											   range.FreeTable->Header.Last,
-											   [](FreeRange range, std::size_t allocSize) -> bool {
-												   return range.Size() < allocSize;
+											   [](FreeRange range, std::size_t allocSize) {
+												   return ValueComp(range.Size(), allocSize);
 											   });
 					{
 						if (range.FreeTable->Header.Last == range.FreeTable->Header.LastArray * state.FreePerArray)
@@ -1048,6 +1088,7 @@ namespace Allocator
 					FreeRange& freeRange = range.FreeTable->Frees[q][r];
 					freeRange.Start      = usedRange.Start;
 					freeRange.End        = usedRange.End;
+					++range.FreeTable->Header.Last;
 				}
 			}
 
@@ -1071,6 +1112,8 @@ namespace Allocator
 			stat.Bytes -= range.Pages << state.PageAlign;
 
 			FreePages(reinterpret_cast<void*>(range.Address), range.Pages, false);
+			range.Address   = 0;
+			range.Pages     = 0;
 			std::size_t min = alloc.Range.Range;
 			Move(table->Ranges, state.RangesPerArray, min + 1, table->Header.Last, min);
 			--table->Header.Last;
