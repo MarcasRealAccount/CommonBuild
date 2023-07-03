@@ -170,4 +170,10 @@ namespace UTF
 		Memory::AlignedFree(outputBuf, alignof(OutputBlock));
 		return output;
 	}
+
+	template <class C1, class C2>
+	Details::String<C1> auto Convert(const Details::String<C2> auto& str, EImpl impl = EImpl::Fastest)
+	{
+		return Convert<C1, C2>(std::basic_string_view<C2>(str), impl);
+	}
 } // namespace UTF
