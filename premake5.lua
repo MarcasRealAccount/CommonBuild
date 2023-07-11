@@ -25,8 +25,10 @@ workspace("CommonBuild")
 		})
 		removefiles({ "*.DS_Store" })
 
+		pkgdeps({ "mimalloc" })
+
 		common:addActions()
-	
+
 	project("Tests")
 		location("%{wks.location}/")
 		warnings("Extra")
@@ -38,7 +40,7 @@ workspace("CommonBuild")
 		includedirs({ "Tests/" })
 		files({ "Tests/**" })
 		removefiles({ "*.DS_Store" })
-		
+
 		links({ "CommonBuild" })
 		externalincludedirs({ "Inc/" })
 

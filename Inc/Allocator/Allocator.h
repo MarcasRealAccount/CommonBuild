@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Concurrency/Mutex.h"
+#include "SortedMatrix.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -13,91 +14,109 @@ namespace Allocator
 	template <Concurrency::SharedMutexC... Mutexes>
 	using ScopedSharedLock = Concurrency::ScopedSharedLock<Mutexes...>;
 
+	void* AllocatePages(std::uint64_t pageCount, bool internal = true) noexcept;
+	void  FreePages(void* addr, std::uint64_t pageCount, bool internal = true) noexcept;
+
+	template <class T>
+	struct PagedArrayAlloc
+	{
+	public:
+		PagedArrayAlloc() noexcept;
+
+		T*   AllocRow() noexcept;
+		void FreeRow(T* row) noexcept;
+
+		std::size_t RowSize() const noexcept { return m_RowSize; }
+
+	private:
+		std::size_t m_RowSize;
+	};
+
 	struct UsedRange
 	{
 	public:
-		std::uint32_t Start;
-		std::uint32_t End;
+		~UsedRange() noexcept
+		{
+			Address = 0;
+			Size    = 0;
+		}
+
+		std::uintptr_t End() const noexcept { return Address + Size; }
+
+		bool Within(std::uintptr_t address) const noexcept
+		{
+			return address >= Address && address < End();
+		}
+
+		bool Within(std::uintptr_t address, std::size_t size) const noexcept
+		{
+			return address < End() && (address + size) >= Address;
+		}
 
 	public:
-		std::size_t Size() const { return static_cast<std::size_t>(End) - Start + 1; }
+		std::uintptr_t Address;
+		std::size_t    Size;
 	};
 
-	struct FreeRange
+	struct Page
 	{
 	public:
-		std::uint32_t Start;
-		std::uint32_t End;
+		~Page() noexcept
+		{
+			Address  = 0;
+			Size     = 0;
+			RefCount = 0;
+		}
+
+		std::uintptr_t End() const noexcept { return Address + Size; }
+
+		bool Within(std::uintptr_t address) const noexcept
+		{
+			return address >= Address && address < End();
+		}
+
+		bool Within(std::uintptr_t address, std::size_t size) const noexcept
+		{
+			return address < End() && (address + size) >= Address;
+		}
 
 	public:
-		std::size_t Size() const { return static_cast<std::size_t>(End) - Start + 1; }
-	};
-
-	struct UsedTableHeader
-	{
-	public:
-		std::size_t   Total;
-		std::uint32_t Last;
-		std::uint32_t LastArray;
-
-		RSM Mtx;
+		std::uintptr_t Address;
+		std::size_t    Size;
+		std::uint64_t  RefCount;
 	};
 
 	struct UsedTable
 	{
 	public:
-		UsedTableHeader Header;
-		UsedRange*      Used[1];
-	};
+		UsedTable() noexcept;
 
-	struct FreeTableHeader
-	{
 	public:
-		std::size_t   Total;
-		std::uint32_t Last;
-		std::uint32_t LastArray;
-
-		RSM Mtx;
+		SortedMatrix<UsedRange, PagedArrayAlloc<UsedRange>> Matrix;
 	};
 
-	struct FreeTable
-	{
-	public:
-		FreeTableHeader Header;
-		FreeRange*      Frees[1];
-	};
-
-	struct Range
-	{
-	public:
-		std::uintptr_t Address;
-		std::size_t    Pages;
-		UsedTable*     UsedTable;
-		FreeTable*     FreeTable;
-	};
-
-	enum class ERangeTableType : std::uint8_t
+	enum class EPageTableType : std::uint8_t
 	{
 		Small = 0,
 		Large
 	};
 
-	struct RangeTableHeader
+	struct PageTable
 	{
 	public:
-		ERangeTableType Type;
-		std::uint8_t    Alignment;
-		std::size_t     Last;
-		std::size_t     LastArray;
+		PageTable(EPageTableType type, std::uint8_t alignment) noexcept;
+		~PageTable() noexcept;
+
+	public:
+		EPageTableType Type;
+		std::uint8_t   Alignment;
 
 		RSM Mtx;
-	};
 
-	struct RangeTable
-	{
-	public:
-		RangeTableHeader Header;
-		Range*           Ranges[1];
+		UsedTable* Used;
+		UsedTable* Free;
+
+		SortedMatrix<Page, PagedArrayAlloc<Page>> Matrix;
 	};
 
 	struct DebugSettings
@@ -125,6 +144,10 @@ namespace Allocator
 	struct State
 	{
 	public:
+		State();
+		~State();
+
+	public:
 		RSM Mtx;
 
 		std::size_t  PageSize;
@@ -133,58 +156,30 @@ namespace Allocator
 		std::size_t ArrayPages;
 		std::size_t TablePages;
 
-		std::size_t RangesPerArray;
-		std::size_t UsedPerArray;
-		std::size_t FreePerArray;
-		std::size_t RangeArraysPerTable;
-		std::size_t UsedArraysPerTable;
-		std::size_t FreeArraysPerTable;
-
 		DebugSettings DebugSettings;
 		DebugStats    DebugStats;
 
-		RangeTable* RangeTables[120];
-
-	public:
-		State();
-		~State();
-	};
-
-	struct RangeInfo
-	{
-	public:
-		RangeTable* Table;
-		std::size_t Range;
-
-	public:
-		RangeInfo() noexcept;
-		RangeInfo(RangeTable* table, std::size_t range) noexcept;
-		RangeInfo(const RangeInfo& copy) noexcept;
-		RangeInfo(RangeInfo&& move) noexcept;
-		~RangeInfo() noexcept;
-
-		RangeInfo& operator=(const RangeInfo& copy) noexcept;
-		RangeInfo& operator=(RangeInfo&& move) noexcept;
+		PageTable* PageTables[120];
 	};
 
 	struct AllocInfo
 	{
 	public:
-		std::uintptr_t Address;
-		std::size_t    Size;
-		std::uint32_t  Index;
-
-		RangeInfo Range;
-
-	public:
 		AllocInfo() noexcept;
-		AllocInfo(std::uintptr_t address, std::size_t size, std::uint32_t index, RangeInfo range) noexcept;
+		AllocInfo(std::uintptr_t address, std::size_t size, PageTable* table, std::size_t index) noexcept;
 		AllocInfo(const AllocInfo& copy) noexcept;
 		AllocInfo(AllocInfo&& move) noexcept;
 		~AllocInfo() noexcept;
 
 		AllocInfo& operator=(const AllocInfo& copy) noexcept;
 		AllocInfo& operator=(AllocInfo&& move) noexcept;
+
+	public:
+		std::uintptr_t Address;
+		std::size_t    Size;
+
+		PageTable*  Table;
+		std::size_t Index;
 	};
 
 	State& GetState();
@@ -200,11 +195,30 @@ namespace Allocator
 
 	AllocInfo FindAlloc(std::uintptr_t address, std::uint8_t alignment);
 	AllocInfo Allocate(std::size_t size, std::uint8_t alignment);
-	AllocInfo AllocateSmall(std::uint16_t allocSize, std::uint8_t alignment);
+	AllocInfo AllocateSmall(std::size_t allocSize, std::uint8_t alignment);
 	AllocInfo AllocateLarge(std::size_t size, std::uint8_t alignment);
 	bool      NeedsResize(const AllocInfo& alloc, std::size_t newSize);
 	bool      TryResizeAlloc(const AllocInfo& alloc, std::size_t newSize, AllocInfo* newAlloc = nullptr);
 	void      Free(const AllocInfo& alloc);
 	void      ZeroAlloc(const AllocInfo& alloc);
 	void      ZeroAllocRange(const AllocInfo& alloc, std::size_t offset, std::size_t size);
+
+	template <class T>
+	PagedArrayAlloc<T>::PagedArrayAlloc() noexcept
+	{
+		State& state = GetState();
+		m_RowSize    = (state.ArrayPages << state.PageAlign) / sizeof(T);
+	}
+
+	template <class T>
+	T* PagedArrayAlloc<T>::AllocRow() noexcept
+	{
+		return static_cast<T*>(AllocatePages(GetState().ArrayPages));
+	}
+
+	template <class T>
+	void PagedArrayAlloc<T>::FreeRow(T* row) noexcept
+	{
+		FreePages(row, GetState().ArrayPages);
+	}
 } // namespace Allocator
