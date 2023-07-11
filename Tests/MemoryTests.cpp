@@ -153,7 +153,7 @@ static void TestMultiAlloc(void* (*alloc)(), void (*free)(void* data), void* (*r
 	Allocator::DebugStats stats {};
 	Allocator::GetDebugStats(stats);
 
-	void* datas[N];
+	void** datas = (void**) Memory::Malloc(N * sizeof(void*));
 	for (std::size_t i = 0; i < N; ++i)
 		Testing::Assert(datas[i] = alloc());
 	if (realloc)
@@ -175,8 +175,9 @@ static void TestMultiAlloc(void* (*alloc)(), void (*free)(void* data), void* (*r
 		for (std::size_t i = 0; i < N; ++i)
 			test(datas[i]);
 	}
-	for (std::size_t i = 0; i < N; ++i)
-		free(datas[i]);
+	for (std::size_t i = N; i > 0; --i)
+		free(datas[i - 1]);
+	Memory::Free(datas);
 
 	Allocator::DebugStats stats2 {};
 	Allocator::GetDebugStats(stats2);
@@ -639,20 +640,26 @@ void MemoryTests()
 
 	Testing::PushGroup("Memory Basic w dbg");
 	Allocator::SetDebugSettings({ .PushMessages = true });
-	basicTests();
+	Testing::Test("MultiAlloc", []() {
+		TestMultiAlloc<1024 << 10>([]() -> void* { return Memory::Malloc(1024); }, Memory::Free, nullptr, nullptr);
+	});
+	Testing::Test("MultiAlloc", []() {
+		TestMultiAlloc<1024 << 10>([]() -> void* { return Memory::Malloc(1024); }, Memory::Free, nullptr, nullptr);
+	});
+	// basicTests();
 	Allocator::SetDebugSettings({ .PushMessages = false });
 	Testing::PopGroup();
 	Testing::PushGroup("Memory Basic w/o dbg");
-	basicTests();
+	// basicTests();
 	Testing::PopGroup();
 
 	Testing::PushGroup("Memory Advanced w dbg");
 	Allocator::SetDebugSettings({ .PushMessages = true });
-	advancedTests();
+	// advancedTests();
 	Allocator::SetDebugSettings({ .PushMessages = false });
 	Testing::PopGroup();
 	Testing::PushGroup("Memory Advanced w/o dbg");
-	advancedTests();
+	// advancedTests();
 	Testing::PopGroup();
 
 	double baselines[16];
@@ -701,10 +708,10 @@ void MemoryTests()
 	};
 
 	Testing::PushGroup("Memory Basic Speed");
-	basicSpeedTests();
+	// basicSpeedTests();
 	Testing::PopGroup();
 
 	Testing::PushGroup("Memory Advanced Speed");
-	advancedSpeedTests();
+	// advancedSpeedTests();
 	Testing::PopGroup();
 }

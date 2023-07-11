@@ -50,9 +50,9 @@ namespace Allocator
 	}
 
 	template <class T>
-	static std::int32_t ValueComp(T a, T b) noexcept
+	static std::weak_ordering ValueComp(T a, T b) noexcept
 	{
-		return a < b ? -1 : (a > b ? 1 : 0);
+		return a < b ? std::weak_ordering::less : (a > b ? std::weak_ordering::greater : std::weak_ordering::equivalent);
 	}
 
 	template <class T>
@@ -65,8 +65,7 @@ namespace Allocator
 	}
 
 	UsedTable::UsedTable() noexcept
-		: Total(0),
-		  Matrix(MaxMatrixRows<UsedTable>())
+		: Matrix(MaxMatrixRows<UsedTable>())
 	{
 	}
 
@@ -279,8 +278,6 @@ namespace Allocator
 
 	static bool FindAlloc(PageTable* table, std::uintptr_t address, AllocInfo& info)
 	{
-		State& state = s_State;
-
 		switch (table->Type)
 		{
 		case EPageTableType::Small:
@@ -290,6 +287,8 @@ namespace Allocator
 				address,
 				[](const UsedRange& range) -> std::uintptr_t { return range.Address; },
 				ValueComp<std::uintptr_t>);
+			if (index >= table->Used->Matrix.Size())
+				return false;
 
 			UsedRange& range = table->Used->Matrix[index];
 			if (address >= range.Address && address < range.End())
@@ -306,6 +305,8 @@ namespace Allocator
 				address,
 				[](const Page& page) -> std::uintptr_t { return page.Address; },
 				ValueComp<std::uintptr_t>);
+			if (index >= table->Matrix.Size())
+				return false;
 
 			Page& page = table->Matrix[index];
 			if (address >= page.Address && address < page.End())
@@ -367,6 +368,52 @@ namespace Allocator
 			return AllocateLarge(size, alignment);
 	}
 
+	static std::size_t NewUsedPages(PageTable* table, UsedRange&& range)
+	{
+		return table->Used->Matrix.Insert(
+			std::move(range),
+			[](const auto& matrix, const UsedRange& range) -> std::size_t {
+				return FindGreaterEqual(
+					matrix,
+					range.Address,
+					[](const UsedRange& range) -> std::size_t { return range.Address; },
+					ValueComp<std::uintptr_t>);
+			});
+	}
+
+	static std::size_t NewFreePages(PageTable* table, UsedRange&& range)
+	{
+		return table->Free->Matrix.Insert(
+			std::move(range),
+			[](const auto& matrix, const UsedRange& range) -> std::size_t {
+				return FindGreaterEqual(
+					matrix,
+					range.Size,
+					[](const UsedRange& range) -> std::size_t { return range.Size; },
+					ValueComp<std::size_t>);
+			});
+	}
+
+	static std::size_t NewAllocationPages(PageTable* table, std::size_t pages, std::size_t refCount = 1)
+	{
+		State& state = s_State;
+
+		void*          addr  = AllocatePages(pages, false);
+		std::uintptr_t addri = reinterpret_cast<std::uintptr_t>(addr);
+		return table->Matrix.Insert(
+			Page {
+				.Address  = addri,
+				.Size     = pages << state.PageAlign,
+				.RefCount = refCount },
+			[](const auto& matrix, const Page& page) -> std::size_t {
+				return FindGreaterEqual(
+					matrix,
+					page.Address,
+					[](const Page& page) -> std::uintptr_t { return page.Address; },
+					ValueComp<std::uintptr_t>);
+			});
+	}
+
 	AllocInfo AllocateSmall(std::size_t allocSize, std::uint8_t alignment)
 	{
 		if (alignment < 4 || alignment > 63 || !allocSize)
@@ -381,88 +428,49 @@ namespace Allocator
 			allocSize,
 			[](const UsedRange& range) -> std::size_t { return range.Size; },
 			ValueComp<std::size_t>);
-		UsedRange free = table->Free->Matrix[freeIndex];
-		if (free.Size >= allocSize)
+		std::size_t index = table->Used->Matrix.Size();
+		if (freeIndex < table->Free->Matrix.Size())
 		{
+			// TODO(MarcasRealAccount): Maybe don't assume the free is large enough?
+			UsedRange free = table->Free->Matrix[freeIndex];
 			table->Free->Matrix.Erase(freeIndex);
 			if (free.Size > allocSize)
-			{
-				table->Free->Matrix.Insert(
-					UsedRange {
-						.Address = free.Address + allocSize,
-						.Size    = free.Size - allocSize },
-					[](const auto& matrix, const UsedRange& range) -> std::size_t {
-						return FindGreaterEqual(
-							matrix,
-							range.Size,
-							[](const UsedRange& range) -> std::size_t { return range.Size; },
-							ValueComp<std::size_t>);
-					});
-			}
+				NewFreePages(table, UsedRange { .Address = free.Address + allocSize, .Size = free.Size - allocSize });
 
-			std::size_t index = table->Used->Matrix.Insert(
-				UsedRange { free.Address, allocSize },
-				[](const auto& matrix, const UsedRange& range) -> std::size_t {
-					return FindGreaterEqual(
-						matrix,
-						range.Address,
-						[](const UsedRange& range) -> std::uintptr_t { return range.Address; },
-						ValueComp<std::uintptr_t>);
-				});
-			std::size_t pageIndex = FindLessEqual(
-				table->Matrix,
-				free.Address,
-				[](const Page& page) -> std::uintptr_t { return page.Address; },
-				ValueComp<std::uintptr_t>);
-			Page& page = table->Matrix[pageIndex];
-			if (free.Address >= page.Address && free.Address < page.End())
-				++page.RefCount;
-			return AllocInfo(free.Address, allocSize, table, index);
+			index = NewUsedPages(table, UsedRange { free.Address, allocSize });
+		}
+		else
+		{
+			std::size_t pages    = Memory::AlignCountCeil((table->Matrix.Size() + 1) << 20, state.PageSize);
+			std::size_t sizeLeft = (pages << state.PageAlign) - allocSize;
+
+			std::size_t pageIndex = NewAllocationPages(table, pages, 0);
+			Page&       page      = table->Matrix[pageIndex];
+
+			NewFreePages(table, UsedRange { .Address = page.Address + allocSize, .Size = sizeLeft });
+			index = NewUsedPages(table, UsedRange { .Address = page.Address, .Size = allocSize });
 		}
 
-		std::size_t    pages = Memory::AlignCountCeil(table->Matrix.Size() << 20, state.PageAlign);
-		void*          addr  = AllocatePages(pages, false);
-		std::uintptr_t addri = reinterpret_cast<std::uintptr_t>(addr);
-		std::size_t    size  = pages << state.PageAlign;
+		DebugStat& stat = state.DebugStats.Small;
+		++stat.Count;
+		stat.Bytes += allocSize;
 
-		std::size_t index = table->Matrix.Insert(
-			Page {
-				.Address  = addri,
-				.Size     = size,
-				.RefCount = 1 },
-			[](const auto& matrix, const Page& page) -> std::size_t {
-				return FindGreaterEqual(
-					matrix,
-					page.Address,
-					[](const Page& page) -> std::uintptr_t { return page.Address; },
-					ValueComp<std::uintptr_t>);
-			});
+		UsedRange& used = table->Used->Matrix[index];
 
-		std::size_t sizeLeft = size - allocSize;
+		std::size_t firstPageIndex = FindLessEqual(
+			table->Matrix,
+			used.Address,
+			[](const Page& page) -> std::uintptr_t { return page.Address; },
+			ValueComp<std::uintptr_t>);
+		std::size_t lastPageIndex = FindLessEqual(
+			table->Matrix,
+			used.End(),
+			[](const Page& page) -> std::uintptr_t { return page.Address; },
+			ValueComp<std::uintptr_t>);
+		for (std::size_t i = firstPageIndex; i <= lastPageIndex; ++i)
+			++table->Matrix[i].RefCount;
 
-		table->Free->Matrix.Insert(
-			UsedRange {
-				.Address = addri + sizeLeft,
-				.Size    = sizeLeft },
-			[](const auto& matrix, const UsedRange& range) -> std::size_t {
-				return FindGreaterEqual(
-					matrix,
-					range.Size,
-					[](const UsedRange& range) -> std::size_t { return range.Size; },
-					ValueComp<std::size_t>);
-			});
-		std::size_t usedIndex = table->Used->Matrix.Insert(
-			UsedRange {
-				.Address = addri,
-				.Size    = allocSize },
-			[](const auto& matrix, const UsedRange& range) -> std::size_t {
-				return FindGreaterEqual(
-					matrix,
-					range.Address,
-					[](const UsedRange& range) -> std::uintptr_t { return range.Address; },
-					ValueComp<std::uintptr_t>);
-			});
-		return AllocInfo(addri, allocSize, table, usedIndex);
+		return AllocInfo(used.Address, used.Size, table, index);
 	}
 
 	AllocInfo AllocateLarge(std::size_t size, std::uint8_t alignment)
@@ -473,26 +481,16 @@ namespace Allocator
 		State& state = s_State;
 		auto   lock  = ScopedLock<RSM> { state.Mtx };
 
-		std::size_t    pages = Memory::AlignCountCeil(size, state.PageAlign);
-		void*          addr  = AllocatePages(pages, false);
-		std::uintptr_t addri = reinterpret_cast<std::uintptr_t>(addr);
-		std::size_t    size  = pages << state.PageAlign;
-
 		PageTable*  table = state.PageTables[alignment * 2 - 7];
-		std::size_t index = table->Matrix.Insert(
-			Page {
-				.Address  = addri,
-				.Size     = size,
-				.RefCount = 1 },
-			[](const auto& matrix, const Page& page) -> std::size_t {
-				return FindGreaterEqual(
-					matrix,
-					page.Address,
-					[](const Page& page) -> std::uintptr_t { return page.Address; },
-					ValueComp<std::uintptr_t>);
-			});
+		std::size_t pages = Memory::AlignCountCeil(size, state.PageSize);
+		std::size_t index = NewAllocationPages(table, pages);
+		Page&       page  = table->Matrix[index];
 
-		return AllocInfo(addri, size, table, index);
+		DebugStat& stat = state.DebugStats.Large;
+		++stat.Count;
+		stat.Bytes += page.Size;
+
+		return AllocInfo(page.Address, page.Size, table, index);
 	}
 
 	bool NeedsResize(const AllocInfo& alloc, std::size_t newSize)
@@ -521,75 +519,69 @@ namespace Allocator
 			UsedRange used = table->Used->Matrix[alloc.Index];
 			table->Used->Matrix.Erase(alloc.Index);
 
-			bool        insertFree = true;
-			std::size_t pageIndex  = FindLessEqual(
-                table->Matrix,
-                alloc.Address,
-                [](const Page& page) -> std::uintptr_t { return page.Address; },
-                ValueComp<std::uintptr_t>);
-			Page& page = table->Matrix[pageIndex];
-			if (alloc.Address >= page.Address && alloc.Address < page.End())
-			{
-				if (--page.RefCount == 0)
-				{
-					FreePages(reinterpret_cast<void*>(page.Address), page.Size >> state.PageAlign, false);
-					table->Matrix.Erase(pageIndex);
-					insertFree = false;
+			DebugStat& stat = state.DebugStats.Small;
+			--stat.Count;
+			stat.Bytes -= used.Size;
 
-					table->Free->Matrix.EraseIf([&page](const UsedRange& range) -> bool {
-						return range.Address >= page.Address && range.Address < page.End();
-					});
-				}
+			// TODO(MarcasRealAccount): Free up pages with RefCount == 0
+			std::size_t firstPageIndex = FindLessEqual(
+				table->Matrix,
+				used.Address,
+				[](const Page& page) -> std::uintptr_t { return page.Address; },
+				ValueComp<std::uintptr_t>);
+			std::size_t lastPageIndex = FindLessEqual(
+				table->Matrix,
+				used.End(),
+				[](const Page& page) -> std::uintptr_t { return page.Address; },
+				ValueComp<std::uintptr_t>);
+			for (std::size_t i = firstPageIndex; i <= lastPageIndex; ++i)
+			{
+				Page& page = table->Matrix[i];
+				--page.RefCount;
 			}
 
-			if (insertFree)
+			std::uintptr_t newFreeAddr = used.Address;
+			std::size_t    newFreeSize = used.Size;
+
+			std::size_t prevFree = table->Free->Matrix.Size();
+			std::size_t nextFree = table->Free->Matrix.Size();
+			std::size_t i        = 0;
+			for (const UsedRange& range : table->Free->Matrix)
 			{
-				std::uintptr_t newFreeAddr = used.Address;
-				std::size_t    newFreeSize = used.Size;
-				// TODO(MarcasRealAccount): Maybe look for both at the same time?
-				std::size_t prevFree = FindEqualIter(
-					table->Free->Matrix,
-					used.Address,
-					[](const UsedRange& range) -> std::uintptr_t { return range.End(); },
-					ValueComp<std::uintptr_t>);
-				if (prevFree < table->Free->Matrix.Size())
-				{
-					UsedRange& prev = table->Free->Matrix[prevFree];
-					newFreeAddr     = prev.Address;
-					newFreeSize    += prev.Size;
-					table->Free->Matrix.Erase(prevFree);
-				}
-
-				std::size_t nextFree = FindEqualIter(
-					table->Free->Matrix,
-					used.End(),
-					[](const UsedRange& range) -> std::uintptr_t { return range.Address; },
-					ValueComp<std::uintptr_t>);
-				if (nextFree < table->Free->Matrix.Size())
-				{
-					UsedRange& next = table->Free->Matrix[nextFree];
-					newFreeSize    += next.Size;
-					table->Free->Matrix.Erase(nextFree);
-				}
-
-				table->Free->Matrix.Insert(
-					UsedRange { .Address = newFreeAddr,
-								.Size    = newFreeSize },
-					[](const auto& matrix, const UsedRange& range) -> std::size_t {
-						return FindGreaterEqual(
-							matrix,
-							range.Size,
-							[](const UsedRange& range) -> std::size_t { return range.Size; },
-							ValueComp<std::size_t>);
-					});
+				if (range.End() == used.Address)
+					prevFree = i;
+				if (range.Address == used.End())
+					nextFree = i;
+				++i;
 			}
+			if (prevFree < table->Free->Matrix.Size())
+			{
+				UsedRange& prev = table->Free->Matrix[prevFree];
+				newFreeAddr     = prev.Address;
+				newFreeSize    += prev.Size;
+				table->Free->Matrix.Erase(prevFree);
+				if (nextFree > prevFree)
+					--nextFree;
+			}
+			if (nextFree < table->Free->Matrix.Size())
+			{
+				UsedRange& next = table->Free->Matrix[nextFree];
+				newFreeSize    += next.Size;
+				table->Free->Matrix.Erase(nextFree);
+			}
+
+			NewFreePages(table, UsedRange { .Address = newFreeAddr, .Size = newFreeSize });
 			break;
 		}
 		case EPageTableType::Large:
 		{
-			auto& page = table->Matrix[alloc.Index];
+			Page page = table->Matrix[alloc.Index];
 			FreePages(reinterpret_cast<void*>(page.Address), page.Size >> state.PageAlign, false);
 			table->Matrix.Erase(alloc.Index);
+
+			DebugStat& stat = state.DebugStats.Large;
+			--stat.Count;
+			stat.Bytes -= page.Size;
 			break;
 		}
 		}

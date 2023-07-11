@@ -6,15 +6,15 @@ local buildTool = premake:setup("CommonBuild", "amd64", { "Debug", "Release", "D
 buildTool:mapConfigs({
 	Debug = {
 		config  = "Debug",
-		targets = { CommonBuild = { path = "CommonBuild/", outputFiles = pkg:libNames("CommonBuild", true) } }
+		targets = { CommonBuild = { path = "CommonBuild/", outputFiles = pkg:libName("CommonBuild", true) } }
 	},
 	Release = {
 		config  = "Release",
-		targets = { CommonBuild = { path = "CommonBuild/", outputFiles = pkg:libNames("CommonBuild", true) } }
+		targets = { CommonBuild = { path = "CommonBuild/", outputFiles = pkg:libName("CommonBuild", true) } }
 	},
 	Dist = {
 		config  = "Dist",
-		targets = { CommonBuild = { path = "CommonBuild/", outputFiles = pkg:libNames("CommonBuild", true) } }
+		targets = { CommonBuild = { path = "CommonBuild/", outputFiles = pkg:libName("CommonBuild", true) } }
 	}
 })
 buildTool:build()

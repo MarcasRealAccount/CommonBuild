@@ -35,20 +35,55 @@ namespace Allocator
 	struct UsedRange
 	{
 	public:
-		std::uintptr_t Address;
-		std::size_t    Size;
+		~UsedRange() noexcept
+		{
+			Address = 0;
+			Size    = 0;
+		}
 
 		std::uintptr_t End() const noexcept { return Address + Size; }
+
+		bool Within(std::uintptr_t address) const noexcept
+		{
+			return address >= Address && address < End();
+		}
+
+		bool Within(std::uintptr_t address, std::size_t size) const noexcept
+		{
+			return address < End() && (address + size) >= Address;
+		}
+
+	public:
+		std::uintptr_t Address;
+		std::size_t    Size;
 	};
 
 	struct Page
 	{
 	public:
+		~Page() noexcept
+		{
+			Address  = 0;
+			Size     = 0;
+			RefCount = 0;
+		}
+
+		std::uintptr_t End() const noexcept { return Address + Size; }
+
+		bool Within(std::uintptr_t address) const noexcept
+		{
+			return address >= Address && address < End();
+		}
+
+		bool Within(std::uintptr_t address, std::size_t size) const noexcept
+		{
+			return address < End() && (address + size) >= Address;
+		}
+
+	public:
 		std::uintptr_t Address;
 		std::size_t    Size;
 		std::uint64_t  RefCount;
-
-		std::uintptr_t End() const noexcept { return Address + Size; }
 	};
 
 	struct UsedTable
@@ -57,8 +92,6 @@ namespace Allocator
 		UsedTable() noexcept;
 
 	public:
-		std::size_t Total;
-
 		SortedMatrix<UsedRange, PagedArrayAlloc<UsedRange>> Matrix;
 	};
 
@@ -111,6 +144,10 @@ namespace Allocator
 	struct State
 	{
 	public:
+		State();
+		~State();
+
+	public:
 		RSM Mtx;
 
 		std::size_t  PageSize;
@@ -123,21 +160,10 @@ namespace Allocator
 		DebugStats    DebugStats;
 
 		PageTable* PageTables[120];
-
-	public:
-		State();
-		~State();
 	};
 
 	struct AllocInfo
 	{
-	public:
-		std::uintptr_t Address;
-		std::size_t    Size;
-
-		PageTable*  Table;
-		std::size_t Index;
-
 	public:
 		AllocInfo() noexcept;
 		AllocInfo(std::uintptr_t address, std::size_t size, PageTable* table, std::size_t index) noexcept;
@@ -147,6 +173,13 @@ namespace Allocator
 
 		AllocInfo& operator=(const AllocInfo& copy) noexcept;
 		AllocInfo& operator=(AllocInfo&& move) noexcept;
+
+	public:
+		std::uintptr_t Address;
+		std::size_t    Size;
+
+		PageTable*  Table;
+		std::size_t Index;
 	};
 
 	State& GetState();
@@ -162,7 +195,7 @@ namespace Allocator
 
 	AllocInfo FindAlloc(std::uintptr_t address, std::uint8_t alignment);
 	AllocInfo Allocate(std::size_t size, std::uint8_t alignment);
-	AllocInfo AllocateSmall(std::uint16_t allocSize, std::uint8_t alignment);
+	AllocInfo AllocateSmall(std::size_t allocSize, std::uint8_t alignment);
 	AllocInfo AllocateLarge(std::size_t size, std::uint8_t alignment);
 	bool      NeedsResize(const AllocInfo& alloc, std::size_t newSize);
 	bool      TryResizeAlloc(const AllocInfo& alloc, std::size_t newSize, AllocInfo* newAlloc = nullptr);

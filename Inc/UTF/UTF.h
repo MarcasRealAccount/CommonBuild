@@ -89,86 +89,95 @@ namespace UTF
 		constexpr EEncoding From = Details::EncodingTypeV<C2>;
 		constexpr EEncoding To   = Details::EncodingTypeV<C1>;
 
-		const void* inputBuf  = str.data();
-		std::size_t inputSize = str.size() * sizeof(Details::CharTypeT<From>);
-		std::size_t inputOff  = 0;
-
-		std::size_t outputSize = 0;
-		EError      error      = CalcReqSize<From, To>(inputBuf, inputSize, outputSize, impl);
-		if (error != EError::Success)
-			return std::basic_string<C1> {};
-
-		void*       outputBuf = Memory::AlignedMalloc(alignof(OutputBlock), outputSize);
-		std::size_t outputOff = 0;
-		if (!outputBuf)
-			return std::basic_string<C1> {};
-
-		std::size_t firstBytes, lastBytes;
-		Details::CalcIters(reinterpret_cast<std::uintptr_t>(inputBuf), inputSize, alignof(InputBlock), firstBytes, lastBytes);
-		std::size_t fastIters = (inputSize - firstBytes - lastBytes) / alignof(InputBlock);
-
-		InputBlock  inputBlock;
-		OutputBlock outputBlock;
-		std::size_t bytesWritten = 0;
-		if (firstBytes > 0)
+		if constexpr (From == To)
 		{
-			std::size_t firstPadded = firstBytes;
-			if (fastIters + lastBytes > 0)
-			{
-				if constexpr (From == EEncoding::UTF8)
-					firstPadded += std::min<std::size_t>(3, fastIters + lastBytes);
-				else if constexpr (From == EEncoding::UTF16)
-					firstPadded += std::min<std::size_t>(2, fastIters + lastBytes);
-			}
-			std::memcpy(&inputBlock, reinterpret_cast<const std::uint8_t*>(inputBuf) + inputOff, firstPadded);
-			std::memset(reinterpret_cast<std::uint8_t*>(&inputBlock) + firstPadded, 0, sizeof(inputBlock) - firstPadded);
-			error = ConvBlock<From, To>(inputBlock, outputBlock, firstBytes, bytesWritten, impl);
-			if (error != EError::Success)
-			{
-				Memory::AlignedFree(outputBuf, alignof(OutputBlock));
-				return std::basic_string<C1> {};
-			}
-			std::memcpy(reinterpret_cast<std::uint8_t*>(outputBuf) + outputOff, &outputBlock, bytesWritten);
-			inputOff  += firstBytes;
-			outputOff += bytesWritten;
+			std::basic_string<C1> result(str.size(), '\0');
+			std::memcpy(result.data(), str.data(), str.size() * sizeof(C1));
+			return result;
 		}
-
-		for (std::size_t i = 0; i < fastIters; ++i)
+		else
 		{
-			error = ConvBlock<From, To>(*reinterpret_cast<const InputBlock*>(reinterpret_cast<const std::uint8_t*>(inputBuf) + inputOff),
-										*reinterpret_cast<OutputBlock*>(reinterpret_cast<std::uint8_t*>(outputBuf) + outputOff),
-										alignof(InputBlock),
-										bytesWritten,
-										impl);
-			if (error != EError::Success)
-			{
-				Memory::AlignedFree(outputBuf, alignof(OutputBlock));
-				return std::basic_string<C1> {};
-			}
-			inputOff  += alignof(InputBlock);
-			outputOff += bytesWritten;
-		}
+			const void* inputBuf  = str.data();
+			std::size_t inputSize = str.size() * sizeof(Details::CharTypeT<From>);
+			std::size_t inputOff  = 0;
 
-		if (lastBytes > 0)
-		{
-			std::memcpy(&inputBlock, reinterpret_cast<const std::uint8_t*>(inputBuf) + inputOff, lastBytes);
-			std::memset(reinterpret_cast<std::uint8_t*>(&inputBlock) + lastBytes, 0, sizeof(inputBlock) - lastBytes);
-			error = ConvBlock<From, To>(inputBlock, outputBlock, lastBytes, bytesWritten, impl);
+			std::size_t outputSize = 0;
+			EError      error      = CalcReqSize<From, To>(inputBuf, inputSize, outputSize, impl);
 			if (error != EError::Success)
-			{
-				Memory::AlignedFree(outputBuf, alignof(OutputBlock));
 				return std::basic_string<C1> {};
-			}
-			std::memcpy(reinterpret_cast<std::uint8_t*>(outputBuf) + outputOff, &outputBlock, bytesWritten);
-			inputOff  += lastBytes;
-			outputOff += bytesWritten;
-		}
 
-		std::basic_string<C1> output;
-		output.resize(outputSize / sizeof(Details::CharTypeT<To>));
-		std::memcpy(output.data(), outputBuf, outputSize);
-		Memory::AlignedFree(outputBuf, alignof(OutputBlock));
-		return output;
+			void*       outputBuf = Memory::AlignedMalloc(alignof(OutputBlock), outputSize);
+			std::size_t outputOff = 0;
+			if (!outputBuf)
+				return std::basic_string<C1> {};
+
+			std::size_t firstBytes, lastBytes;
+			Details::CalcIters(reinterpret_cast<std::uintptr_t>(inputBuf), inputSize, alignof(InputBlock), firstBytes, lastBytes);
+			std::size_t fastIters = (inputSize - firstBytes - lastBytes) / alignof(InputBlock);
+
+			InputBlock  inputBlock;
+			OutputBlock outputBlock;
+			std::size_t bytesWritten = 0;
+			if (firstBytes > 0)
+			{
+				std::size_t firstPadded = firstBytes;
+				if (fastIters + lastBytes > 0)
+				{
+					if constexpr (From == EEncoding::UTF8)
+						firstPadded += std::min<std::size_t>(3, fastIters + lastBytes);
+					else if constexpr (From == EEncoding::UTF16)
+						firstPadded += std::min<std::size_t>(2, fastIters + lastBytes);
+				}
+				std::memcpy(&inputBlock, reinterpret_cast<const std::uint8_t*>(inputBuf) + inputOff, firstPadded);
+				std::memset(reinterpret_cast<std::uint8_t*>(&inputBlock) + firstPadded, 0, sizeof(inputBlock) - firstPadded);
+				error = ConvBlock<From, To>(inputBlock, outputBlock, firstBytes, bytesWritten, impl);
+				if (error != EError::Success)
+				{
+					Memory::AlignedFree(outputBuf, alignof(OutputBlock));
+					return std::basic_string<C1> {};
+				}
+				std::memcpy(reinterpret_cast<std::uint8_t*>(outputBuf) + outputOff, &outputBlock, bytesWritten);
+				inputOff  += firstBytes;
+				outputOff += bytesWritten;
+			}
+
+			for (std::size_t i = 0; i < fastIters; ++i)
+			{
+				error = ConvBlock<From, To>(*reinterpret_cast<const InputBlock*>(reinterpret_cast<const std::uint8_t*>(inputBuf) + inputOff),
+											*reinterpret_cast<OutputBlock*>(reinterpret_cast<std::uint8_t*>(outputBuf) + outputOff),
+											alignof(InputBlock),
+											bytesWritten,
+											impl);
+				if (error != EError::Success)
+				{
+					Memory::AlignedFree(outputBuf, alignof(OutputBlock));
+					return std::basic_string<C1> {};
+				}
+				inputOff  += alignof(InputBlock);
+				outputOff += bytesWritten;
+			}
+
+			if (lastBytes > 0)
+			{
+				std::memcpy(&inputBlock, reinterpret_cast<const std::uint8_t*>(inputBuf) + inputOff, lastBytes);
+				std::memset(reinterpret_cast<std::uint8_t*>(&inputBlock) + lastBytes, 0, sizeof(inputBlock) - lastBytes);
+				error = ConvBlock<From, To>(inputBlock, outputBlock, lastBytes, bytesWritten, impl);
+				if (error != EError::Success)
+				{
+					Memory::AlignedFree(outputBuf, alignof(OutputBlock));
+					return std::basic_string<C1> {};
+				}
+				std::memcpy(reinterpret_cast<std::uint8_t*>(outputBuf) + outputOff, &outputBlock, bytesWritten);
+				inputOff  += lastBytes;
+				outputOff += bytesWritten;
+			}
+
+			std::basic_string<C1> output;
+			output.resize(outputSize / sizeof(Details::CharTypeT<To>));
+			std::memcpy(output.data(), outputBuf, outputSize);
+			Memory::AlignedFree(outputBuf, alignof(OutputBlock));
+			return output;
+		}
 	}
 
 	template <class C1, class C2>

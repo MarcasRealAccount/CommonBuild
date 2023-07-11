@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BinarySearch.h"
+#include "Memory/Memory.h"
 
 #include <cstddef>
 #include <cstring>
@@ -47,6 +48,11 @@ namespace Allocator
 		V& operator*()
 		{
 			return m_Matrix->Get(m_Index);
+		}
+
+		V* operator->()
+		{
+			return &m_Matrix->Get(m_Index);
 		}
 
 		SortedMatrixIterator& operator++()
@@ -102,6 +108,40 @@ namespace Allocator
 			return lhs.m_Index - rhs.m_Index;
 		}
 
+		friend bool operator==(SortedMatrixIterator lhs, SortedMatrixIterator rhs)
+		{
+			return lhs.m_Matrix == rhs.m_Matrix && lhs.m_Index == rhs.m_Index;
+		}
+
+		friend bool operator!=(SortedMatrixIterator lhs, SortedMatrixIterator rhs)
+		{
+			return !(lhs == rhs);
+		}
+
+		friend bool operator<(SortedMatrixIterator lhs, SortedMatrixIterator rhs)
+		{
+			if (lhs.m_Matrix > rhs.m_Matrix)
+				return false;
+			return lhs.m_Matrix < rhs.m_Matrix || lhs.m_Index < rhs.m_Index;
+		}
+
+		friend bool operator>(SortedMatrixIterator lhs, SortedMatrixIterator rhs)
+		{
+			if (lhs.m_Matrix < rhs.m_Matrix)
+				return false;
+			return lhs.m_Matrix > rhs.m_Matrix || lhs.m_Index > rhs.m_Index;
+		}
+
+		friend bool operator<=(SortedMatrixIterator lhs, SortedMatrixIterator rhs)
+		{
+			return !(lhs > rhs);
+		}
+
+		friend bool operator>=(SortedMatrixIterator lhs, SortedMatrixIterator rhs)
+		{
+			return !(lhs < rhs);
+		}
+
 	private:
 		friend SM;
 
@@ -118,11 +158,13 @@ namespace Allocator
 	{
 	public:
 		using iterator       = SortedMatrixIterator<V, SortedMatrix<V, Impl>>;
-		using const_iterator = SortedMatrixIterator<const V, SortedMatrix<const V, Impl>>;
+		using const_iterator = SortedMatrixIterator<const V, const SortedMatrix<V, Impl>>;
 
 	public:
 		SortedMatrix(std::size_t maxRows) noexcept
-			: m_MaxRows(maxRows)
+			: m_MaxRows(maxRows),
+			  m_Last(0),
+			  m_LastArray(0)
 		{
 		}
 
@@ -133,7 +175,7 @@ namespace Allocator
 			{
 				std::size_t toIter = i < lr ? m_Impl.RowSize() : (i == lr ? lc : 0);
 				for (std::size_t j = 0; j < toIter; ++j)
-					m_Elements[i][j].~T();
+					m_Elements[i][j].~V();
 
 				m_Impl.FreeRow(m_Elements[i]);
 			}
@@ -167,22 +209,42 @@ namespace Allocator
 		std::size_t Insert(V&& value, Find find) noexcept
 		{
 			std::size_t at = find(*this, value);
-			MoveUp(at);
+			MoveUp(at, m_Last, 1);
 			new (&Get(at)) V { std::move(value) };
 			return at;
 		}
 
 		void Erase(std::size_t at) noexcept
 		{
-			Get(at).~T();
-			MoveDown(at + 1);
+			Get(at).~V();
+			MoveDown(at + 1, m_Last, 1);
 		}
 
 		template <class Comp>
 		std::size_t EraseIf(Comp comp) noexcept
 		{
+			std::size_t rs    = m_Impl.RowSize();
 			std::size_t count = 0;
-
+			std::size_t ii = 0, ij = 0;
+			std::size_t lastIndex = 0;
+			for (std::size_t i = 0; i < m_Last; ++i)
+			{
+				if (comp(m_Elements[ii][ij]))
+				{
+					m_Elements[ii][ij].~V();
+					if (lastIndex)
+						MoveDown(lastIndex + 1, i, count);
+					lastIndex = i;
+					++count;
+				}
+				if (++ij == rs)
+				{
+					++ii;
+					ij = 0;
+				}
+			}
+			if (lastIndex)
+				MoveDown(lastIndex + 1, m_Last, count);
 			return count;
 		}
 
@@ -203,96 +265,47 @@ namespace Allocator
 		const_iterator cend() const { return const_iterator { *this, m_Last }; }
 
 	private:
-		void MoveUp(std::size_t from) noexcept
+		void MoveUp(std::size_t from, std::size_t to, std::size_t count) noexcept
 		{
 			if (from > m_Last)
 				return;
 
-			std::size_t rs = m_Impl.RowSize();
-			if (m_Last == m_LastArray * rs)
+			std::size_t rs    = m_Impl.RowSize();
+			std::size_t toAdd = Memory::AlignCountCeil(m_Last + count, rs) - m_LastArray;
+			for (std::size_t i = 0; i < toAdd; ++i)
 			{
 				m_Elements[m_LastArray] = m_Impl.AllocRow();
 				++m_LastArray;
 			}
 
-			std::size_t toMove = m_Last - from;
-			++m_Last;
+			std::size_t toMove = to - from;
+			m_Last            += count;
 
 			if (toMove == 0)
 				return;
 
-			auto [ii, ij] = Indices(from + toMove);
-			auto [ji, jj] = Indices(from + toMove + 1);
-
-			for (std::size_t i = 0; i < toMove; ++i)
-			{
-				m_Elements[ji][jj] = std::move(m_Elements[ii][ij]);
-				if (ij == 0)
-				{
-					--ii;
-					ij = rs - 1;
-				}
-				else
-				{
-					--ij;
-				}
-				if (jj == 0)
-				{
-					--ji;
-					jj = rs - 1;
-				}
-				else
-				{
-					--jj;
-				}
-			}
+			auto [ii, ij] = Indices(from + toMove - 1);
+			auto [ji, jj] = Indices(from + toMove + count - 1);
 		}
 
-		void MoveDown(std::size_t from) noexcept
+		void MoveDown(std::size_t from, std::size_t to, std::size_t count) noexcept
 		{
 			if (from > m_Last)
 				return;
 
-			std::size_t toMove = m_Last - from;
-			--m_Last;
-
-			std::size_t rs = m_Impl.RowSize();
-			if (m_Last < (m_LastArray >> 1) * rs)
-			{
-				std::size_t toFree = m_LastArray >> 1;
-				for (std::size_t i = 0; i < toFree; ++i)
-				{
-					std::size_t j = m_LastArray - toFree - 1;
-					m_Impl.FreeRow(m_Elements[j]);
-					m_Elements[j] = nullptr;
-				}
-				m_LastArray -= toFree;
-			}
+			std::size_t toMove = to - from;
+			m_Last            -= count;
 
 			if (toMove == 0)
 				return;
 
 			auto [ii, ij] = Indices(from);
-			auto [ji, jj] = Indices(from - 1);
+			auto [ji, jj] = Indices(from - count);
 
-
-			for (std::size_t i = 0; i < toMove; ++i)
-			{
-				m_Elements[ji][jj] = std::move(m_Elements[ii][ij]);
-				if (++ij == rs)
-				{
-					++ii;
-					ij = 0;
-				}
-				if (++jj == rs)
-				{
-					++ji;
-					jj = 0;
-				}
-			}
+			std::size_t rs = m_Impl.RowSize();
 		}
 
-		std::pair<std::size_t, std::size_t> Indices(std::size_t at) noexcept
+		std::pair<std::size_t, std::size_t> Indices(std::size_t at) const noexcept
 		{
 			std::size_t rs = m_Impl.RowSize();
 			return { at / rs, at % rs };
