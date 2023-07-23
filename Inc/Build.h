@@ -7,13 +7,14 @@
 #define BUILD_CONFIG_RELEASE 2
 #define BUILD_CONFIG_DIST    3
 
-#define BUILD_SYSTEM_UNKNOWN 0
-#define BUILD_SYSTEM_WINDOWS 1
-#define BUILD_SYSTEM_XBOX    2
-#define BUILD_SYSTEM_MACOSX  3
-#define BUILD_SYSTEM_IOS     4
-#define BUILD_SYSTEM_LINUX   5
-#define BUILD_SYSTEM_ANDROID 6
+#define BUILD_SYSTEM_UNKNOWN     0
+#define BUILD_SYSTEM_WINDOWS     1
+#define BUILD_SYSTEM_XBOX        2
+#define BUILD_SYSTEM_MACOSX      3
+#define BUILD_SYSTEM_IOS         4
+#define BUILD_SYSTEM_LINUX       5
+#define BUILD_SYSTEM_ANDROID     6
+#define BUILD_SYSTEM_PLAYSTATION 7
 
 #define BUILD_TOOLSET_UNKNOWN 0
 #define BUILD_TOOLSET_MSVC    1
@@ -29,14 +30,17 @@
 #define BUILD_IS_CONFIG_DEBUG ((BUILD_CONFIG == BUILD_CONFIG_DEBUG) || (BUILD_CONFIG == BUILD_CONFIG_RELEASE))
 #define BUILD_IS_CONFIG_DIST  ((BUILD_CONFIG == BUILD_CONFIG_RELEASE) || (BUILD_CONFIG == BUILD_CONFIG_DIST))
 
-#define BUILD_IS_SYSTEM_UNIX      ((BUILD_SYSTEM == BUILD_SYSTEM_MACOSX) || (BUILD_SYSTEM == BUILD_SYSTEM_IOS) || (BUILD_SYSTEM == BUILD_SYSTEM_LINUX) || (BUILD_SYSTEM == BUILD_SYSTEM_ANDROID))
-#define BUILD_IS_SYSTEM_APPLE     ((BUILD_SYSTEM == BUILD_SYSTEM_MACOSX) || (BUILD_SYSTEM == BUILD_SYSTEM_IOS))
-#define BUILD_IS_SYSTEM_MICROSOFT (BUILD_SYSTEM == BUILD_SYSTEM_WINDOWS)
-#define BUILD_IS_SYSTEM_WINDOWS   (BUILD_SYSTEM == BUILD_SYSTEM_WINDOWS)
-#define BUILD_IS_SYSTEM_MACOSX    (BUILD_SYSTEM == BUILD_SYSTEM_MACOSX)
-#define BUILD_IS_SYSTEM_IOS       (BUILD_SYSTEM == BUILD_SYSTEM_IOS)
-#define BUILD_IS_SYSTEM_LINUX     (BUILD_SYSTEM == BUILD_SYSTEM_LINUX)
-#define BUILD_IS_SYSTEM_ANDROID   (BUILD_SYSTEM == BUILD_SYSTEM_ANDROID)
+#define BUILD_IS_SYSTEM_UNIX        ((BUILD_SYSTEM == BUILD_SYSTEM_MACOSX) || (BUILD_SYSTEM == BUILD_SYSTEM_IOS) || (BUILD_SYSTEM == BUILD_SYSTEM_LINUX) || (BUILD_SYSTEM == BUILD_SYSTEM_ANDROID))
+#define BUILD_IS_SYSTEM_APPLE       ((BUILD_SYSTEM == BUILD_SYSTEM_MACOSX) || (BUILD_SYSTEM == BUILD_SYSTEM_IOS))
+#define BUILD_IS_SYSTEM_MICROSOFT   (BUILD_SYSTEM == BUILD_SYSTEM_WINDOWS)
+#define BUILD_IS_SYSTEM_SONY        (BUILD_SYSTEM == BUILD_SYSTEM_PLAYSTATION)
+#define BUILD_IS_SYSTEM_WINDOWS     (BUILD_SYSTEM == BUILD_SYSTEM_WINDOWS)
+#define BUILD_IS_SYSTEM_XBOX        (BUILD_SYSTEM == BUILD_SYSTEM_XBOX)
+#define BUILD_IS_SYSTEM_MACOSX      (BUILD_SYSTEM == BUILD_SYSTEM_MACOSX)
+#define BUILD_IS_SYSTEM_IOS         (BUILD_SYSTEM == BUILD_SYSTEM_IOS)
+#define BUILD_IS_SYSTEM_LINUX       (BUILD_SYSTEM == BUILD_SYSTEM_LINUX)
+#define BUILD_IS_SYSTEM_ANDROID     (BUILD_SYSTEM == BUILD_SYSTEM_ANDROID)
+#define BUILD_IS_SYSTEM_PLAYSTATION (BUILD_SYSTEM == BUILD_SYSTEM_PLAYSTATION)
 
 #define BUILD_IS_TOOLSET_MSVC  (BUILD_TOOLSET == BUILD_TOOLSET_MSVC)
 #define BUILD_IS_TOOLSET_CLANG (BUILD_TOOLSET == BUILD_TOOLSET_CLANG)
@@ -63,16 +67,18 @@ namespace Common
 
 	namespace BuildSystems
 	{
-		static constexpr BuildSystem Unknown   = 0x000;
-		static constexpr BuildSystem Microsoft = 0x001;
-		static constexpr BuildSystem Apple     = 0x002;
-		static constexpr BuildSystem Unix      = 0x004;
-		static constexpr BuildSystem Windows   = 0x008;
-		static constexpr BuildSystem XBox      = 0x010;
-		static constexpr BuildSystem MacOSX    = 0x020;
-		static constexpr BuildSystem IOS       = 0x040;
-		static constexpr BuildSystem Linux     = 0x080;
-		static constexpr BuildSystem Android   = 0x100;
+		static constexpr BuildSystem Unknown     = 0x0000;
+		static constexpr BuildSystem Unix        = 0x0001;
+		static constexpr BuildSystem Apple       = 0x0002;
+		static constexpr BuildSystem Microsoft   = 0x0004;
+		static constexpr BuildSystem Sony        = 0x0008;
+		static constexpr BuildSystem Windows     = 0x0010;
+		static constexpr BuildSystem XBox        = 0x0020;
+		static constexpr BuildSystem MacOSX      = 0x0040;
+		static constexpr BuildSystem IOS         = 0x0080;
+		static constexpr BuildSystem Linux       = 0x0100;
+		static constexpr BuildSystem Android     = 0x0200;
+		static constexpr BuildSystem Playstation = 0x0400;
 	} // namespace BuildSystems
 
 	namespace BuildToolsets
@@ -119,6 +125,8 @@ namespace Common
 		return BuildSystems::Unix | BuildSystems::Linux;
 #elif BUILD_SYSTEM == BUILD_SYSTEM_ANDROID
 		return BuildSystems::Unix | BuildSystems::Android;
+#elif BUILD_SYSTEM == BUILD_SYSTEM_PLAYSTATION
+		return BuildSystem::Sony | BuildSystem::Playstation;
 #else
 		return BuildSystems::Unknown;
 #endif
@@ -160,15 +168,17 @@ namespace Common
 	static constexpr bool c_IsConfigDebug = c_Config.HasFlag(BuildConfigs::Debug);
 	static constexpr bool c_IsConfigDist  = c_Config.HasFlag(BuildConfigs::Dist);
 
-	static constexpr bool c_IsSystemMicrosoft = c_System.HasFlag(BuildSystems::Microsoft);
-	static constexpr bool c_IsSystemApple     = c_System.HasFlag(BuildSystems::Apple);
-	static constexpr bool c_IsSystemUnix      = c_System.HasFlag(BuildSystems::Unix);
-	static constexpr bool c_IsSystemWindows   = c_System.HasFlag(BuildSystems::Windows);
-	static constexpr bool c_IsSystemXBox      = c_System.HasFlag(BuildSystems::XBox);
-	static constexpr bool c_IsSystemMacOSX    = c_System.HasFlag(BuildSystems::MacOSX);
-	static constexpr bool c_IsSystemIOS       = c_System.HasFlag(BuildSystems::IOS);
-	static constexpr bool c_IsSystemLinux     = c_System.HasFlag(BuildSystems::Linux);
-	static constexpr bool c_IsSystemAndroid   = c_System.HasFlag(BuildSystems::Android);
+	static constexpr bool c_IsSystemUnix        = c_System.HasFlag(BuildSystems::Unix);
+	static constexpr bool c_IsSystemApple       = c_System.HasFlag(BuildSystems::Apple);
+	static constexpr bool c_IsSystemMicrosoft   = c_System.HasFlag(BuildSystems::Microsoft);
+	static constexpr bool c_IsSystemSony        = c_System.HasFlag(BuildSystems::Sony);
+	static constexpr bool c_IsSystemWindows     = c_System.HasFlag(BuildSystems::Windows);
+	static constexpr bool c_IsSystemXBox        = c_System.HasFlag(BuildSystems::XBox);
+	static constexpr bool c_IsSystemMacOSX      = c_System.HasFlag(BuildSystems::MacOSX);
+	static constexpr bool c_IsSystemIOS         = c_System.HasFlag(BuildSystems::IOS);
+	static constexpr bool c_IsSystemLinux       = c_System.HasFlag(BuildSystems::Linux);
+	static constexpr bool c_IsSystemAndroid     = c_System.HasFlag(BuildSystems::Android);
+	static constexpr bool c_IsSystemPlaystation = c_System.HasFlag(BuildSystems::Playstation);
 
 	static constexpr bool c_IsToolsetMSVC  = c_Toolset.HasFlag(BuildToolsets::MSVC);
 	static constexpr bool c_IsToolsetClang = c_Toolset.HasFlag(BuildToolsets::Clang);
