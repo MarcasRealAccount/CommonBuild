@@ -2,6 +2,10 @@
 
 #include "Common/Flags.h"
 
+#if __cpp_lib_endian >= 201907L
+	#include <bit>
+#endif
+
 #define BUILD_CONFIG_UNKNOWN 0
 #define BUILD_CONFIG_DEBUG   1
 #define BUILD_CONFIG_RELEASE 2
@@ -188,4 +192,45 @@ namespace Common
 	static constexpr bool c_IsPlatformAMD64 = c_Platform.HasFlag(BuildPlatforms::AMD64);
 	static constexpr bool c_IsPlatformARM32 = c_Platform.HasFlag(BuildPlatforms::ARM32);
 	static constexpr bool c_IsPlatformARM64 = c_Platform.HasFlag(BuildPlatforms::ARM64);
+
+	enum class EEndian : std::uint32_t
+	{
+		Native = 0,
+		Little,
+		Big
+	};
+
+	constexpr EEndian GetNativeEndian()
+	{
+		switch (std::endian::native)
+		{
+		case std::endian::little: return EEndian::Little;
+		case std::endian::big: return EEndian::Big;
+		default: return EEndian::Little;
+		}
+	}
+
+	static constexpr EEndian c_NativeEndian = GetNativeEndian();
+
+	template <std::integral T>
+	constexpr T ChangeEndian(const T& value, EEndian to, EEndian from = EEndian::Native) noexcept
+	{
+		if (from == EEndian::Native)
+			from = c_NativeEndian;
+		if (to == EEndian::Native)
+			to = c_NativeEndian;
+
+		if (from == to)
+			return value;
+
+		T             output = value;
+		std::uint8_t* pBytes = reinterpret_cast<std::uint8_t*>(&output);
+		for (std::size_t i = 0, j = sizeof(T) - 1; i < (sizeof(T) >> 1); ++i, --j)
+		{
+			std::uint8_t temp = pBytes[j];
+			pBytes[j]         = pBytes[i];
+			pBytes[i]         = temp;
+		}
+		return output;
+	}
 } // namespace Common
