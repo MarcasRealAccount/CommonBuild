@@ -81,18 +81,18 @@ namespace Common
 		}
 
 #define UNARY_OP(Op)                                 \
-	constexpr friend Flags operator##Op(Flags flags) \
+	constexpr friend Flags operator Op(Flags flags) \
 	{                                                \
-		return { Op##flags.Value };                  \
+		return { Op flags.Value };                  \
 	}
 #define BINARY_FRIEND_OP(Op, RhsType, RhsName, Rhs)                 \
-	constexpr friend Flags operator##Op(Flags lhs, RhsType RhsName) \
+	constexpr friend Flags operator Op(Flags lhs, RhsType RhsName) \
 	{                                                               \
 		return { lhs.Value Op Rhs };                                \
 	}
 #define BINARY_OP(Op, RhsType, RhsName, Rhs)          \
 	BINARY_FRIEND_OP(Op, RhsType, RhsName, Rhs)       \
-	constexpr Flags& operator##Op##=(RhsType RhsName) \
+	constexpr Flags& operator Op##=(RhsType RhsName) \
 	{                                                 \
 		Value = Value Op Rhs;                         \
 		return *this;                                 \
