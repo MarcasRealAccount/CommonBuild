@@ -22,7 +22,7 @@ namespace Memory
 	{
 		if constexpr (c_UseMimalloc)
 		{
-			return mi_malloc_aligned(alignment, size);
+			return mi_malloc_aligned(size, alignment);
 		}
 		else
 		{
