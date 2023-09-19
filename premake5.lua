@@ -1,3 +1,8 @@
+newoption({
+	trigger     = "build-tests",
+	description = "Builds tests"
+})
+
 workspace("CommonBuild")
 	location("build/")
 	common:addConfigs()
@@ -5,7 +10,7 @@ workspace("CommonBuild")
 
 	cppdialect("C++20")
 	rtti("Off")
-	exceptionhandling("Off")
+	exceptionhandling("On")
 	flags("MultiProcessorCompile")
 
 	startproject("Tests")
@@ -29,10 +34,11 @@ workspace("CommonBuild")
 
 		common:addActions()
 
+if _OPTIONS["build-tests"] then
 	project("Tests")
 		location("%{wks.location}/")
 		warnings("Extra")
-		
+
 		kind("ConsoleApp")
 		targetdir("%{wks.location}/CommonBuild/%{cfg.buildcfg}")
 		objdir("%{wks.location}/CommonBuild/%{cfg.buildcfg}")
@@ -45,3 +51,4 @@ workspace("CommonBuild")
 		externalincludedirs({ "Inc/" })
 
 		common:addActions()
+end

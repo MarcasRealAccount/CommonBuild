@@ -221,14 +221,14 @@ namespace UTF::Generic
 				break;
 			case 2:
 				codepoint = (word & 0x1F) << 6 |
-							(word >> 8) & 0x3F;
+							((word >> 8) & 0x3F);
 				inputBuf += 2;
 				i        += 2;
 				break;
 			case 3:
 				codepoint = (word & 0x0F) << 12 |
 							((word >> 8) & 0x3F) << 6 |
-							(word >> 16) & 0x3F;
+							((word >> 16) & 0x3F);
 				inputBuf += 3;
 				i        += 3;
 				break;
@@ -236,7 +236,7 @@ namespace UTF::Generic
 				codepoint = (word & 0x07) << 18 |
 							((word >> 8) & 0x3F) << 12 |
 							((word >> 16) & 0x3F) << 6 |
-							(word >> 24) & 0x3F;
+							((word >> 24) & 0x3F);
 				inputBuf += 4;
 				i        += 4;
 				break;
@@ -253,8 +253,8 @@ namespace UTF::Generic
 			if (codepoint > 0xFFFF)
 			{
 				codepoint    = codepoint - 0x1'0000;
-				outputBuf[0] = 0xD800 | (codepoint >> 10) & 0x3FF;
-				outputBuf[1] = 0xDC00 | codepoint & 0x3FF;
+				outputBuf[0] = 0xD800 | ((codepoint >> 10) & 0x3FF);
+				outputBuf[1] = 0xDC00 | (codepoint & 0x3FF);
 				outputSize  += 4;
 				outputBuf   += 2;
 			}
@@ -286,14 +286,14 @@ namespace UTF::Generic
 				break;
 			case 2:
 				*outputBuf = (word & 0x1F) << 6 |
-							 (word >> 8) & 0x3F;
+							 ((word >> 8) & 0x3F);
 				inputBuf += 2;
 				i        += 2;
 				break;
 			case 3:
 				*outputBuf = (word & 0x0F) << 12 |
 							 ((word >> 8) & 0x3F) << 6 |
-							 (word >> 16) & 0x3F;
+							 ((word >> 16) & 0x3F);
 				inputBuf += 3;
 				i        += 3;
 				break;
@@ -301,7 +301,7 @@ namespace UTF::Generic
 				*outputBuf = (word & 0x07) << 18 |
 							 ((word >> 8) & 0x3F) << 12 |
 							 ((word >> 16) & 0x3F) << 6 |
-							 (word >> 24) & 0x3F;
+							 ((word >> 24) & 0x3F);
 				inputBuf += 4;
 				i        += 4;
 				break;
@@ -357,7 +357,7 @@ namespace UTF::Generic
 				i += 2;
 				break;
 			case 2:
-				codepoint    = ((word & 0x3FF) << 10 | (word >> 16) & 0x3FF) + 0x1'0000;
+				codepoint    = ((word & 0x3FF) << 10 | ((word >> 16) & 0x3FF)) + 0x1'0000;
 				outputBuf[0] = 0xF0 | static_cast<char8_t>((codepoint >> 18) & 0x07);
 				outputBuf[1] = 0x80 | static_cast<char8_t>((codepoint >> 12) & 0x3F);
 				outputBuf[2] = 0x80 | static_cast<char8_t>((codepoint >> 6) & 0x3F);
@@ -396,7 +396,7 @@ namespace UTF::Generic
 				i += 2;
 				break;
 			case 2:
-				*outputBuf = ((word & 0x3FF) << 10 | (word >> 16) & 0x3FF) + 0x1'0000;
+				*outputBuf = ((word & 0x3FF) << 10 | ((word >> 16) & 0x3FF)) + 0x1'0000;
 				++outputBuf;
 				outputSize += 4;
 				inputBuf   += 2;
