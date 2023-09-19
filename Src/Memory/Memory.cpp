@@ -1,5 +1,4 @@
 #include "Memory/Memory.h"
-#include "Allocator/Allocator.h"
 #include "Build.h"
 
 #include <bit>
@@ -8,393 +7,75 @@
 
 namespace Memory
 {
-	static constexpr bool c_UseMimalloc = true;
-
-	static constexpr bool ToFastAlign(std::size_t alignment, std::uint8_t& fastAlign)
+	static size_t CountedSize(size_t count, size_t size, size_t alignment)
 	{
-		if (std::popcount(alignment) != 1)
-			return false;
-		fastAlign = Allocator::FastAlign(alignment);
-		return true;
+		size_t alignedSize = (size + alignment - 1) / alignment * alignment;
+		return count * alignedSize;
 	}
-
+	
 	void* AlignedMalloc(std::size_t alignment, std::size_t size) noexcept
 	{
-		if constexpr (c_UseMimalloc)
-		{
-			return mi_malloc_aligned(size, alignment);
-		}
-		else
-		{
-			std::uint8_t fastAlign;
-			if (!size || !ToFastAlign(alignment, fastAlign))
-				return nullptr;
-
-			Allocator::AllocInfo result = Allocator::Allocate(size, fastAlign);
-			if (result.Address == 0)
-				return nullptr;
-			return reinterpret_cast<void*>(result.Address);
-		}
+		return mi_malloc_aligned(size, alignment);
 	}
 
 	void* AlignedZalloc(std::size_t alignment, std::size_t size) noexcept
 	{
-		if constexpr (c_UseMimalloc)
-		{
-			return mi_zalloc_aligned(size, alignment);
-		}
-		else
-		{
-			std::uint8_t fastAlign;
-			if (!size || !ToFastAlign(alignment, fastAlign))
-				return nullptr;
-
-			Allocator::AllocInfo result = Allocator::Allocate(size, fastAlign);
-			Allocator::ZeroAlloc(result);
-			return reinterpret_cast<void*>(result.Address);
-		}
+		return mi_zalloc_aligned(size, alignment);
 	}
 
 	void* AlignedCalloc(std::size_t alignment, std::size_t count, std::size_t size) noexcept
 	{
-		if constexpr (c_UseMimalloc)
-		{
-			return mi_calloc_aligned(count, size, alignment);
-		}
-		else
-		{
-			std::uint8_t fastAlign;
-			if (!size || !ToFastAlign(alignment, fastAlign))
-				return nullptr;
-
-			Allocator::AllocInfo result = Allocator::Allocate(Allocator::CountedSize(count, size, fastAlign), fastAlign);
-			return reinterpret_cast<void*>(result.Address);
-		}
+		return mi_calloc_aligned(count, size, alignment);
 	}
 
 	void* AlignedZCalloc(std::size_t alignment, std::size_t count, std::size_t size) noexcept
 	{
-		if constexpr (c_UseMimalloc)
-		{
-			return mi_calloc_aligned(count, size, alignment);
-		}
-		else
-		{
-			std::uint8_t fastAlign;
-			if (!size || !ToFastAlign(alignment, fastAlign))
-				return nullptr;
-
-			Allocator::AllocInfo result = Allocator::Allocate(Allocator::CountedSize(count, size, fastAlign), fastAlign);
-			Allocator::ZeroAlloc(result);
-			return reinterpret_cast<void*>(result.Address);
-		}
+		return mi_calloc_aligned(count, size, alignment);
 	}
 
 	void* AlignedRMalloc(void* ptr, std::size_t newSize, std::size_t alignment) noexcept
 	{
-		if constexpr (c_UseMimalloc)
-		{
-			return mi_realloc_aligned(ptr, newSize, alignment);
-		}
-		else
-		{
-			std::uint8_t fastAlign;
-			if (!ToFastAlign(alignment, fastAlign))
-				fastAlign = 0;
-
-			Allocator::AllocInfo alloc = Allocator::FindAlloc(reinterpret_cast<std::uintptr_t>(ptr), fastAlign);
-			if (!alloc.Address)
-				return nullptr;
-
-			if (!Allocator::NeedsResize(alloc, newSize))
-				return reinterpret_cast<void*>(alloc.Address);
-
-			{
-				Allocator::AllocInfo newAlloc;
-				if (Allocator::TryResizeAlloc(alloc, newSize, &newAlloc))
-					return reinterpret_cast<void*>(newAlloc.Address);
-			}
-
-			Allocator::AllocInfo newAlloc = Allocator::Allocate(newSize, alloc.Table->Alignment);
-			if (!newAlloc.Address)
-				return nullptr;
-
-			std::memcpy(reinterpret_cast<void*>(newAlloc.Address),
-						reinterpret_cast<void*>(alloc.Address),
-						std::min<std::size_t>(alloc.Size, newAlloc.Size));
-			Allocator::Free(alloc);
-			return reinterpret_cast<void*>(newAlloc.Address);
-		}
+		return mi_realloc_aligned(ptr, newSize, alignment);
 	}
 
 	void* AlignedRZalloc(void* ptr, std::size_t newSize, std::size_t alignment) noexcept
 	{
-		if constexpr (c_UseMimalloc)
-		{
-			return mi_rezalloc_aligned(ptr, newSize, alignment);
-		}
-		else
-		{
-			std::uint8_t fastAlign;
-			if (!ToFastAlign(alignment, fastAlign))
-				fastAlign = 0;
-
-			Allocator::AllocInfo alloc = Allocator::FindAlloc(reinterpret_cast<std::uintptr_t>(ptr), fastAlign);
-			if (!alloc.Address)
-				return nullptr;
-
-			if (!Allocator::NeedsResize(alloc, newSize))
-				return reinterpret_cast<void*>(alloc.Address);
-
-			{
-				Allocator::AllocInfo newAlloc;
-				if (Allocator::TryResizeAlloc(alloc, newSize, &newAlloc))
-				{
-					if (newAlloc.Size > alloc.Size)
-						Allocator::ZeroAllocRange(newAlloc, alloc.Size, newAlloc.Size - alloc.Size);
-					return reinterpret_cast<void*>(newAlloc.Address);
-				}
-			}
-
-			Allocator::AllocInfo newAlloc = Allocator::Allocate(newSize, alloc.Table->Alignment);
-			if (!newAlloc.Address)
-				return nullptr;
-
-			std::memcpy(reinterpret_cast<void*>(newAlloc.Address),
-						reinterpret_cast<void*>(alloc.Address),
-						std::min<std::size_t>(alloc.Size, newAlloc.Size));
-			if (newAlloc.Size > alloc.Size)
-				Allocator::ZeroAllocRange(newAlloc, alloc.Size, newAlloc.Size - alloc.Size);
-			Allocator::Free(alloc);
-			return reinterpret_cast<void*>(newAlloc.Address);
-		}
+		return mi_rezalloc_aligned(ptr, newSize, alignment);
 	}
 
 	void* AlignedRCalloc(void* ptr, std::size_t newCount, std::size_t newSize, std::size_t alignment) noexcept
 	{
-		if constexpr (c_UseMimalloc)
-		{
-			return mi_recalloc_aligned(ptr, newCount, newSize, alignment);
-		}
-		else
-		{
-			std::uint8_t fastAlign;
-			if (!ToFastAlign(alignment, fastAlign))
-				fastAlign = 0;
-
-			Allocator::AllocInfo alloc = Allocator::FindAlloc(reinterpret_cast<std::uintptr_t>(ptr), fastAlign);
-			if (!alloc.Address)
-				return nullptr;
-
-			std::size_t newCountedSize = Allocator::CountedSize(newCount, newSize, alloc.Table->Alignment);
-
-			if (!Allocator::NeedsResize(alloc, newCountedSize))
-				return reinterpret_cast<void*>(alloc.Address);
-
-			{
-				Allocator::AllocInfo newAlloc;
-				if (Allocator::TryResizeAlloc(alloc, newCountedSize, &newAlloc))
-					return reinterpret_cast<void*>(newAlloc.Address);
-			}
-
-			Allocator::AllocInfo newAlloc = Allocator::Allocate(newCountedSize, alloc.Table->Alignment);
-			if (!newAlloc.Address)
-				return nullptr;
-
-			std::memcpy(reinterpret_cast<void*>(newAlloc.Address),
-						reinterpret_cast<void*>(alloc.Address),
-						std::min<std::size_t>(alloc.Size, newAlloc.Size));
-			Allocator::Free(alloc);
-			return reinterpret_cast<void*>(newAlloc.Address);
-		}
+		return mi_recalloc_aligned(ptr, newCount, newSize, alignment);
 	}
 
 	void* AlignedRZCalloc(void* ptr, std::size_t newCount, std::size_t newSize, std::size_t alignment) noexcept
 	{
-		if constexpr (c_UseMimalloc)
-		{
-			return mi_recalloc_aligned(ptr, newCount, newSize, alignment);
-		}
-		else
-		{
-			std::uint8_t fastAlign;
-			if (!ToFastAlign(alignment, fastAlign))
-				fastAlign = 0;
-
-			Allocator::AllocInfo alloc = Allocator::FindAlloc(reinterpret_cast<std::uintptr_t>(ptr), fastAlign);
-			if (!alloc.Address)
-				return nullptr;
-
-			std::size_t newCountedSize = Allocator::CountedSize(newCount, newSize, alloc.Table->Alignment);
-
-			if (!Allocator::NeedsResize(alloc, newCountedSize))
-				return reinterpret_cast<void*>(alloc.Address);
-
-			{
-				Allocator::AllocInfo newAlloc;
-				if (Allocator::TryResizeAlloc(alloc, newCountedSize, &newAlloc))
-				{
-					if (newAlloc.Size > alloc.Size)
-						Allocator::ZeroAllocRange(newAlloc, alloc.Size, newAlloc.Size - alloc.Size);
-					return reinterpret_cast<void*>(newAlloc.Address);
-				}
-			}
-
-			Allocator::AllocInfo newAlloc = Allocator::Allocate(newCountedSize, alloc.Table->Alignment);
-			if (!newAlloc.Address)
-				return nullptr;
-
-			std::memcpy(reinterpret_cast<void*>(newAlloc.Address),
-						reinterpret_cast<void*>(alloc.Address),
-						std::min<std::size_t>(alloc.Size, newAlloc.Size));
-			if (newAlloc.Size > alloc.Size)
-				Allocator::ZeroAllocRange(newAlloc, alloc.Size, newAlloc.Size - alloc.Size);
-			Allocator::Free(alloc);
-			return reinterpret_cast<void*>(newAlloc.Address);
-		}
+		return mi_recalloc_aligned(ptr, newCount, newSize, alignment);
 	}
 
 	void* AlignedEMalloc(void* ptr, std::size_t newSize, std::size_t alignment) noexcept
 	{
-		if constexpr (c_UseMimalloc)
-		{
-			return mi_expand(ptr, newSize);
-		}
-		else
-		{
-			std::uint8_t fastAlign;
-			if (!ToFastAlign(alignment, fastAlign))
-				fastAlign = 0;
-
-			Allocator::AllocInfo alloc = Allocator::FindAlloc(reinterpret_cast<std::uintptr_t>(ptr), fastAlign);
-			if (!alloc.Address)
-				return nullptr;
-
-			if (!Allocator::NeedsResize(alloc, newSize))
-				return reinterpret_cast<void*>(alloc.Address);
-
-			Allocator::AllocInfo newAlloc;
-			if (Allocator::TryResizeAlloc(alloc, newSize, &newAlloc))
-				return reinterpret_cast<void*>(newAlloc.Address);
-			return nullptr;
-		}
+		return mi_expand(ptr, newSize);
 	}
 
 	void* AlignedEZalloc(void* ptr, std::size_t newSize, std::size_t alignment) noexcept
 	{
-		if constexpr (c_UseMimalloc)
-		{
-			return mi_expand(ptr, newSize);
-		}
-		else
-		{
-			std::uint8_t fastAlign;
-			if (!ToFastAlign(alignment, fastAlign))
-				fastAlign = 0;
-
-			Allocator::AllocInfo alloc = Allocator::FindAlloc(reinterpret_cast<std::uintptr_t>(ptr), fastAlign);
-			if (!alloc.Address)
-				return nullptr;
-
-			if (!Allocator::NeedsResize(alloc, newSize))
-				return reinterpret_cast<void*>(alloc.Address);
-
-			Allocator::AllocInfo newAlloc;
-			if (Allocator::TryResizeAlloc(alloc, newSize, &newAlloc))
-			{
-				if (newAlloc.Size > alloc.Size)
-					Allocator::ZeroAllocRange(newAlloc, alloc.Size, newAlloc.Size - alloc.Size);
-				return reinterpret_cast<void*>(newAlloc.Address);
-			}
-			return nullptr;
-		}
+		return mi_expand(ptr, newSize);
 	}
 
 	void* AlignedECalloc(void* ptr, std::size_t newCount, std::size_t newSize, std::size_t alignment) noexcept
 	{
-		if constexpr (c_UseMimalloc)
-		{
-			std::uint8_t fastAlign;
-			if (!ToFastAlign(alignment, fastAlign))
-				return nullptr;
-
-			return mi_expand(ptr, Allocator::CountedSize(newCount, newSize, fastAlign));
-		}
-		else
-		{
-			std::uint8_t fastAlign;
-			if (!ToFastAlign(alignment, fastAlign))
-				fastAlign = 0;
-
-			Allocator::AllocInfo alloc = Allocator::FindAlloc(reinterpret_cast<std::uintptr_t>(ptr), fastAlign);
-			if (!alloc.Address)
-				return nullptr;
-
-			std::size_t newCountedSize = Allocator::CountedSize(newCount, newSize, alloc.Table->Alignment);
-
-			if (!Allocator::NeedsResize(alloc, newCountedSize))
-				return reinterpret_cast<void*>(alloc.Address);
-
-			Allocator::AllocInfo newAlloc;
-			if (Allocator::TryResizeAlloc(alloc, newCountedSize, &newAlloc))
-				return reinterpret_cast<void*>(newAlloc.Address);
-			return nullptr;
-		}
+		return mi_expand(ptr, CountedSize(newCount, newSize, alignment));
 	}
 
 	void* AlignedEZCalloc(void* ptr, std::size_t newCount, std::size_t newSize, std::size_t alignment) noexcept
 	{
-		if constexpr (c_UseMimalloc)
-		{
-			std::uint8_t fastAlign;
-			if (!ToFastAlign(alignment, fastAlign))
-				return nullptr;
-
-			return mi_expand(ptr, Allocator::CountedSize(newCount, newSize, fastAlign));
-		}
-		else
-		{
-			std::uint8_t fastAlign;
-			if (!ToFastAlign(alignment, fastAlign))
-				fastAlign = 0;
-
-			Allocator::AllocInfo alloc = Allocator::FindAlloc(reinterpret_cast<std::uintptr_t>(ptr), fastAlign);
-			if (!alloc.Address)
-				return nullptr;
-
-			std::size_t newCountedSize = Allocator::CountedSize(newCount, newSize, alloc.Table->Alignment);
-
-			if (!Allocator::NeedsResize(alloc, newCountedSize))
-				return reinterpret_cast<void*>(alloc.Address);
-
-			Allocator::AllocInfo newAlloc;
-			if (Allocator::TryResizeAlloc(alloc, newCountedSize, &newAlloc))
-			{
-				if (newAlloc.Size > alloc.Size)
-					Allocator::ZeroAllocRange(newAlloc, alloc.Size, newAlloc.Size - alloc.Size);
-				return reinterpret_cast<void*>(newAlloc.Address);
-			}
-			return nullptr;
-		}
+		return mi_expand(ptr, CountedSize(newCount, newSize, alignment));
 	}
 
 	void AlignedFree(void* ptr, std::size_t alignment) noexcept
 	{
-		if constexpr (c_UseMimalloc)
-		{
-			mi_free_aligned(ptr, alignment);
-		}
-		else
-		{
-			std::uint8_t fastAlign;
-			if (!ToFastAlign(alignment, fastAlign))
-				fastAlign = 0;
-
-			Allocator::AllocInfo alloc = Allocator::FindAlloc(reinterpret_cast<std::uintptr_t>(ptr), fastAlign);
-			if (!alloc.Address)
-				return;
-			Allocator::Free(alloc);
-		}
+		mi_free_aligned(ptr, alignment);
 	}
 
 	void* Malloc(std::size_t size) noexcept

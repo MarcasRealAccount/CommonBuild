@@ -2,62 +2,62 @@
 
 namespace UTF::SIMD
 {
-	EError CalcReqSize8To16(const void* input, std::size_t inputSize, std::size_t& requiredSize)
+	EError CalcReqSize8To16([[maybe_unused]] const void* input, [[maybe_unused]] std::size_t inputSize, [[maybe_unused]] std::size_t& requiredSize)
 	{
 		return EError::MissingImpl;
 	}
 
-	EError CalcReqSize8To32(const void* input, std::size_t inputSize, std::size_t& requiredSize)
+	EError CalcReqSize8To32([[maybe_unused]] const void* input, [[maybe_unused]] std::size_t inputSize, [[maybe_unused]] std::size_t& requiredSize)
 	{
 		return EError::MissingImpl;
 	}
 
-	EError CalcReqSize16To8(const void* input, std::size_t inputSize, std::size_t& requiredSize)
+	EError CalcReqSize16To8([[maybe_unused]] const void* input, [[maybe_unused]] std::size_t inputSize, [[maybe_unused]] std::size_t& requiredSize)
 	{
 		return EError::MissingImpl;
 	}
 
-	EError CalcReqSize16To32(const void* input, std::size_t inputSize, std::size_t& requiredSize)
+	EError CalcReqSize16To32([[maybe_unused]] const void* input, [[maybe_unused]] std::size_t inputSize, [[maybe_unused]] std::size_t& requiredSize)
 	{
 		return EError::MissingImpl;
 	}
 
-	EError CalcReqSize32To8(const void* input, std::size_t inputSize, std::size_t& requiredSize)
+	EError CalcReqSize32To8([[maybe_unused]] const void* input, [[maybe_unused]] std::size_t inputSize, [[maybe_unused]] std::size_t& requiredSize)
 	{
 		return EError::MissingImpl;
 	}
 
-	EError CalcReqSize32To16(const void* input, std::size_t inputSize, std::size_t& requiredSize)
+	EError CalcReqSize32To16([[maybe_unused]] const void* input, [[maybe_unused]] std::size_t inputSize, [[maybe_unused]] std::size_t& requiredSize)
 	{
 		return EError::MissingImpl;
 	}
 
-	EError ConvBlock8To16(const InputBlock& input, OutputBlock& output, std::size_t inputSize, std::size_t& outputSize)
+	EError ConvBlock8To16([[maybe_unused]] const InputBlock& input, [[maybe_unused]] OutputBlock& output, [[maybe_unused]] std::size_t inputSize, [[maybe_unused]] std::size_t& outputSize)
 	{
 		return EError::MissingImpl;
 	}
 
-	EError ConvBlock8To32(const InputBlock& input, OutputBlock& output, std::size_t inputSize, std::size_t& outputSize)
+	EError ConvBlock8To32([[maybe_unused]] const InputBlock& input, [[maybe_unused]] OutputBlock& output, [[maybe_unused]] std::size_t inputSize, [[maybe_unused]] std::size_t& outputSize)
 	{
 		return EError::MissingImpl;
 	}
 
-	EError ConvBlock16To8(const InputBlock& input, OutputBlock& output, std::size_t inputSize, std::size_t& outputSize)
+	EError ConvBlock16To8([[maybe_unused]] const InputBlock& input, [[maybe_unused]] OutputBlock& output, [[maybe_unused]] std::size_t inputSize, [[maybe_unused]] std::size_t& outputSize)
 	{
 		return EError::MissingImpl;
 	}
 
-	EError ConvBlock16To32(const InputBlock& input, OutputBlock& output, std::size_t inputSize, std::size_t& outputSize)
+	EError ConvBlock16To32([[maybe_unused]] const InputBlock& input, [[maybe_unused]] OutputBlock& output, [[maybe_unused]] std::size_t inputSize, [[maybe_unused]] std::size_t& outputSize)
 	{
 		return EError::MissingImpl;
 	}
 
-	EError ConvBlock32To8(const InputBlock& input, OutputBlock& output, std::size_t inputSize, std::size_t& outputSize)
+	EError ConvBlock32To8([[maybe_unused]] const InputBlock& input, [[maybe_unused]] OutputBlock& output, [[maybe_unused]] std::size_t inputSize, [[maybe_unused]] std::size_t& outputSize)
 	{
 		return EError::MissingImpl;
 	}
 
-	EError ConvBlock32To16(const InputBlock& input, OutputBlock& output, std::size_t inputSize, std::size_t& outputSize)
+	EError ConvBlock32To16([[maybe_unused]] const InputBlock& input, [[maybe_unused]] OutputBlock& output, [[maybe_unused]] std::size_t inputSize, [[maybe_unused]] std::size_t& outputSize)
 	{
 		return EError::MissingImpl;
 	}

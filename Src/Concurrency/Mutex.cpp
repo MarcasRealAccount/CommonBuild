@@ -1,7 +1,7 @@
 #include "Concurrency/Mutex.h"
 #include "Build.h"
 
-#ifdef BUILD_IS_SYSTEM_WINDOWS
+#if BUILD_IS_SYSTEM_WINDOWS
 	#include <Windows.h>
 #endif
 
@@ -12,7 +12,7 @@ namespace Concurrency
 #if BUILD_IS_SYSTEM_WINDOWS
 		return GetCurrentThreadId();
 #else
-		return 0;
+		return 1;
 #endif
 	}
 
