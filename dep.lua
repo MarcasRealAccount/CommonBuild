@@ -4,4 +4,4 @@ libdirs({ pkg:scriptDir() .. string.format("/Bin/%s-%s-", os.host(), pkg.arch) .
 links({ "CommonBuild" })
 externalincludedirs({ pkg:scriptDir() .. "/Inc/" })
 
-pkdeps({ "mimalloc" })
+pkgdeps({ "mimalloc" })
