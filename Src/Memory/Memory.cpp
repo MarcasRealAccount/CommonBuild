@@ -15,7 +15,7 @@ namespace Memory
 	
 	void* AlignedMalloc(std::size_t alignment, std::size_t size) noexcept
 	{
-		return mi_malloc_aligned(alignment, size);
+		return mi_malloc_aligned(size, alignment);
 	}
 
 	void* AlignedZalloc(std::size_t alignment, std::size_t size) noexcept
