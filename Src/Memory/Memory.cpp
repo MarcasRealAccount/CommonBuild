@@ -12,7 +12,7 @@ namespace Memory
 		size_t alignedSize = (size + alignment - 1) / alignment * alignment;
 		return count * alignedSize;
 	}
-	
+
 	void* AlignedMalloc(std::size_t alignment, std::size_t size) noexcept
 	{
 		return mi_malloc_aligned(size, alignment);
@@ -53,12 +53,12 @@ namespace Memory
 		return mi_recalloc_aligned(ptr, newCount, newSize, alignment);
 	}
 
-	void* AlignedEMalloc(void* ptr, std::size_t newSize, std::size_t alignment) noexcept
+	void* AlignedEMalloc(void* ptr, std::size_t newSize, [[maybe_unused]] std::size_t alignment) noexcept
 	{
 		return mi_expand(ptr, newSize);
 	}
 
-	void* AlignedEZalloc(void* ptr, std::size_t newSize, std::size_t alignment) noexcept
+	void* AlignedEZalloc(void* ptr, std::size_t newSize, [[maybe_unused]] std::size_t alignment) noexcept
 	{
 		return mi_expand(ptr, newSize);
 	}
