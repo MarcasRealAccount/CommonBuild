@@ -13,6 +13,11 @@ namespace Memory
 		return count * alignedSize;
 	}
 
+	size_t AllocationSize(void* ptr) noexcept
+	{
+		return mi_malloc_size(ptr);
+	}
+
 	void* AlignedMalloc(std::size_t alignment, std::size_t size) noexcept
 	{
 		return mi_malloc_aligned(size, alignment);
