@@ -56,6 +56,8 @@ namespace Memory
 			return value / alignment;
 	}
 
+	[[nodiscard]] size_t AllocationSize(void* ptr) noexcept;
+
 	[[nodiscard]] void* AlignedMalloc(std::size_t alignment, std::size_t size) noexcept;
 	[[nodiscard]] void* AlignedZalloc(std::size_t alignment, std::size_t size) noexcept;
 	[[nodiscard]] void* AlignedCalloc(std::size_t alignment, std::size_t count, std::size_t size) noexcept;
