@@ -38,6 +38,26 @@ namespace Memory
 		return mi_calloc_aligned(count, size, alignment);
 	}
 
+	void* AlignedMallocAt(std::size_t alignment, std::size_t size, std::size_t offset) noexcept
+	{
+		return mi_malloc_aligned_at(size, alignment, offset);
+	}
+
+	void* AlignedZallocAt(std::size_t alignment, std::size_t size, std::size_t offset) noexcept
+	{
+		return mi_zalloc_aligned_at(size, alignment, offset);
+	}
+
+	void* AlignedCallocAt(std::size_t alignment, std::size_t count, std::size_t size, std::size_t offset) noexcept
+	{
+		return mi_calloc_aligned_at(count, size, alignment, offset);
+	}
+
+	void* AlignedZCallocAt(std::size_t alignment, std::size_t count, std::size_t size, std::size_t offset) noexcept
+	{
+		return mi_calloc_aligned_at(count, size, alignment, offset);
+	}
+
 	void* AlignedRMalloc(void* ptr, std::size_t newSize, std::size_t alignment) noexcept
 	{
 		return mi_realloc_aligned(ptr, newSize, alignment);
@@ -56,6 +76,26 @@ namespace Memory
 	void* AlignedRZCalloc(void* ptr, std::size_t newCount, std::size_t newSize, std::size_t alignment) noexcept
 	{
 		return mi_recalloc_aligned(ptr, newCount, newSize, alignment);
+	}
+
+	void* AlignedRMallocAt(void* ptr, std::size_t newSize, std::size_t offset, std::size_t alignment) noexcept
+	{
+		return mi_realloc_aligned_at(ptr, newSize, alignment, offset);
+	}
+
+	void* AlignedRZallocAt(void* ptr, std::size_t newSize, std::size_t offset, std::size_t alignment) noexcept
+	{
+		return mi_rezalloc_aligned_at(ptr, newSize, alignment, offset);
+	}
+
+	void* AlignedRCallocAt(void* ptr, std::size_t newCount, std::size_t newSize, std::size_t offset, std::size_t alignment) noexcept
+	{
+		return mi_recalloc_aligned_at(ptr, newCount, newSize, alignment, offset);
+	}
+
+	void* AlignedRZCallocAt(void* ptr, std::size_t newCount, std::size_t newSize, std::size_t offset, std::size_t alignment) noexcept
+	{
+		return mi_recalloc_aligned_at(ptr, newCount, newSize, alignment, offset);
 	}
 
 	void* AlignedEMalloc(void* ptr, std::size_t newSize, [[maybe_unused]] std::size_t alignment) noexcept
