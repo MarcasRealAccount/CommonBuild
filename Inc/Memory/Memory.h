@@ -63,10 +63,20 @@ namespace Memory
 	[[nodiscard]] void* AlignedCalloc(std::size_t alignment, std::size_t count, std::size_t size) noexcept;
 	[[nodiscard]] void* AlignedZCalloc(std::size_t alignment, std::size_t count, std::size_t size) noexcept;
 
+	[[nodiscard]] void* AlignedMallocAt(std::size_t alignment, std::size_t size, std::size_t offset) noexcept;
+	[[nodiscard]] void* AlignedZallocAt(std::size_t alignment, std::size_t size, std::size_t offset) noexcept;
+	[[nodiscard]] void* AlignedCallocAt(std::size_t alignment, std::size_t count, std::size_t size, std::size_t offset) noexcept;
+	[[nodiscard]] void* AlignedZCallocAt(std::size_t alignment, std::size_t count, std::size_t size, std::size_t offset) noexcept;
+
 	[[nodiscard]] void* AlignedRMalloc(void* ptr, std::size_t newSize, std::size_t alignment = 0) noexcept;
 	[[nodiscard]] void* AlignedRZalloc(void* ptr, std::size_t newSize, std::size_t alignment = 0) noexcept;
 	[[nodiscard]] void* AlignedRCalloc(void* ptr, std::size_t newCount, std::size_t newSize, std::size_t alignment = 0) noexcept;
 	[[nodiscard]] void* AlignedRZCalloc(void* ptr, std::size_t newCount, std::size_t newSize, std::size_t alignment = 0) noexcept;
+
+	[[nodiscard]] void* AlignedRMallocAt(void* ptr, std::size_t newSize, std::size_t offset, std::size_t alignment = 0) noexcept;
+	[[nodiscard]] void* AlignedRZallocAt(void* ptr, std::size_t newSize, std::size_t offset, std::size_t alignment = 0) noexcept;
+	[[nodiscard]] void* AlignedRCallocAt(void* ptr, std::size_t newCount, std::size_t newSize, std::size_t offset, std::size_t alignment = 0) noexcept;
+	[[nodiscard]] void* AlignedRZCallocAt(void* ptr, std::size_t newCount, std::size_t newSize, std::size_t offset, std::size_t alignment = 0) noexcept;
 
 	[[nodiscard]] void* AlignedEMalloc(void* ptr, std::size_t newSize, std::size_t alignment = 0) noexcept;
 	[[nodiscard]] void* AlignedEZalloc(void* ptr, std::size_t newSize, std::size_t alignment = 0) noexcept;
