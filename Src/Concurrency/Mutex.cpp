@@ -102,6 +102,7 @@ namespace Concurrency
 
 	bool SharedMutex::TryLockShared() noexcept
 	{
+		std::uint64_t tid = GetThreadID();
 		std::uint64_t val = m_Value.load();
 		if (val & 0x8000'0000 && (val >> 32 != tid))
 			return false;
