@@ -81,6 +81,7 @@ namespace Testing
 	static constexpr uint8_t EndPacket    = 3;
 	static constexpr uint8_t RunPacket    = 4;
 	static constexpr uint8_t ResultPacket = 5;
+	static constexpr uint8_t ReadyPacket  = 6;
 
 	static bool RunTestRecursive(size_t testID, HANDLE hPipe, HANDLE hProc, OVERLAPPED* pOverlapped)
 	{
@@ -141,6 +142,10 @@ namespace Testing
 			}
 
 			g_State->Tests[testID].Result = (ETestResult) packet.Data1[0];
+
+			fSuccess = ReadFile(hPipe, &packet, sizeof(packet), &read, nullptr);
+			if (!fSuccess || read != sizeof(Packet) || packet.Cookie != PacketCookie || packet.Type != ReadyPacket)
+				return false;
 			break;
 		case WAIT_TIMEOUT:
 			g_State->Tests[testID].Result = ETestResult::TimedOut;
@@ -334,6 +339,13 @@ namespace Testing
 				packet          = { .Type = ResultPacket };
 				packet.Data1[0] = (uint8_t) (test < g_State->Tests.size() ? g_State->Tests[test].Result : ETestResult::NotRun);
 				fSuccess        = WriteFile(hPipe, &packet, sizeof(packet), &read, nullptr);
+				if (!fSuccess)
+					break;
+				if (test < g_State->Tests.size() && g_State->Tests[test].Desc.OnPostTest)
+					g_State->Tests[test].Desc.OnPostTest();
+
+				packet   = { .Type = ReadyPacket };
+				fSuccess = WriteFile(hPipe, &packet, sizeof(packet), &read, nullptr);
 				if (!fSuccess)
 					break;
 				break;

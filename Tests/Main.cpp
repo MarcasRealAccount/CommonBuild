@@ -72,6 +72,13 @@ void RegisterTests()
 			.Dependencies = { "Testing.Hidden" },
 			.ExpectSkip   = true,
 		});
+	Testing::Test(
+		"Success with crashing OnPostTest",
+		{
+			.OnTest     = []() { Testing::Success(); },
+			.OnPostTest = []() { assert(false); },
+			.WillCrash  = true,
+		});
 	Testing::PopGroup();
 
 	UTFTests();

@@ -48,7 +48,9 @@ namespace Testing
 
 	struct TestDesc
 	{
+		std::function<void()>    OnPreTest;
 		std::function<void()>    OnTest;
+		std::function<void()>    OnPostTest;
 		std::vector<std::string> Dependencies;
 		std::function<bool()>    OnException = []() {
             return false;

@@ -25,6 +25,9 @@ namespace Testing
 		}
 #endif
 
+		if (test.Desc.OnPreTest)
+			test.Desc.OnPreTest();
+
 		try
 		{
 			test.Desc.OnTest();
@@ -124,6 +127,7 @@ namespace Testing
 		std::cout << std::format("{:{}}{}\033[39m: {}\n", "", 2 * g_State->IntCurGroupDepth, resultStr, test.Name);
 	}
 
+#if !SUPPORT_SEPARATE_TEST_RUNNER
 	static void RunTestRecursive(TestState& test)
 	{
 		if (test.Result != ETestResult::NotRun)
@@ -156,9 +160,13 @@ namespace Testing
 			return;
 		}
 		RunTest(test);
+
+		if (test.Desc.WillCrash)
+			return;
+		if (test.Desc.OnPostTest)
+			test.Desc.OnPostTest();
 	}
 
-#if !SUPPORT_SEPARATE_TEST_RUNNER
 	static void RunTests()
 	{
 		for (auto failed : g_State->IntTestsFailed)
