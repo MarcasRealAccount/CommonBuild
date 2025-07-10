@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include <concepts>
+#include <type_traits>
 
 namespace Common
 {
@@ -28,7 +29,7 @@ namespace Common
 		concept HasGreaterThan = requires(T t) { { t > t } -> std::convertible_to<bool>; };
 
 		template <class T>
-		concept Flaggable = std::is_pod_v<T> && sizeof(T) <= 16 &&
+		concept Flaggable = std::is_standard_layout_v<T> && sizeof(T) <= 16 &&
 							HasBitwiseOr<T> && HasBitwiseXor<T> && HasBitwiseAnd<T> && HasBitwiseNot<T> &&
 							HasLeftShift<T> && HasRightShift<T> &&
 							HasEquals<T> && HasLessThan<T> && HasGreaterThan<T>;
@@ -80,22 +81,22 @@ namespace Common
 			return Value;
 		}
 
-#define UNARY_OP(Op)                                 \
+#define UNARY_OP(Op)                                \
 	constexpr friend Flags operator Op(Flags flags) \
-	{                                                \
+	{                                               \
 		return { Op flags.Value };                  \
 	}
-#define BINARY_FRIEND_OP(Op, RhsType, RhsName, Rhs)                 \
+#define BINARY_FRIEND_OP(Op, RhsType, RhsName, Rhs)                \
 	constexpr friend Flags operator Op(Flags lhs, RhsType RhsName) \
-	{                                                               \
-		return { lhs.Value Op Rhs };                                \
+	{                                                              \
+		return { lhs.Value Op Rhs };                               \
 	}
-#define BINARY_OP(Op, RhsType, RhsName, Rhs)          \
-	BINARY_FRIEND_OP(Op, RhsType, RhsName, Rhs)       \
+#define BINARY_OP(Op, RhsType, RhsName, Rhs)         \
+	BINARY_FRIEND_OP(Op, RhsType, RhsName, Rhs)      \
 	constexpr Flags& operator Op##=(RhsType RhsName) \
-	{                                                 \
-		Value = Value Op Rhs;                         \
-		return *this;                                 \
+	{                                                \
+		Value = Value Op Rhs;                        \
+		return *this;                                \
 	}
 
 		UNARY_OP(~);

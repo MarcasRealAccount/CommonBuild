@@ -109,7 +109,7 @@ QualifierAlignment: Custom
 QualifierOrder: [ 'static', 'inline', 'constexpr', 'const', 'volatile', 'restrict', 'type' ]
 RequiresClausePosition: WithPreceding
 #RequiresExpressionIndentation: OuterScope
-SeparateDefinitionBlocks: Always
+SeparateDefinitionBlocks: Leave
 SortIncludes: CaseInsensitive
 SortJavaStaticImport: After
 SortUsingDeclarations: true

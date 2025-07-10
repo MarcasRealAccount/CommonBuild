@@ -2,7 +2,7 @@ local pkg       = premake.extensions.pkg
 local scriptDir = pkg:scriptDir()
 local premake   = pkg.builders.premake
 
-local buildTool = premake:setup("CommonBuild", "amd64", { "Debug", "Release", "Dist" }, scriptDir, "build", "%{targetname}/%{config}")
+local buildTool = premake:setup("CommonBuild", "amd64", { "Debug", "Release", "Dist" }, scriptDir, "build", "%{targetname}/%{config}", "--build-pkg")
 buildTool:mapConfigs({
 	Debug = {
 		config  = "Debug",

@@ -1,10 +1,12 @@
 newoption({
-	trigger     = "build-tests",
-	description = "Builds tests"
+	trigger     = "build-pkg",
+	description = "Builds only the package"
 })
 
 workspace("CommonBuild")
+if _OPTIONS["build-pkg"] then
 	location("build/")
+end
 	common:addConfigs()
 	common:addBuildDefines()
 
@@ -13,15 +15,16 @@ workspace("CommonBuild")
 	exceptionhandling("On")
 	flags("MultiProcessorCompile")
 
+if not _OPTIONS["build-pkg"] then
 	startproject("Tests")
+end
 
 	project("CommonBuild")
 		location("%{wks.location}/")
 		warnings("Extra")
 
 		kind("StaticLib")
-		targetdir("%{wks.location}/CommonBuild/%{cfg.buildcfg}")
-		objdir("%{wks.location}/CommonBuild/%{cfg.buildcfg}")
+		common:outDirs()
 
 		includedirs({ "Inc/" })
 		files({
@@ -34,14 +37,13 @@ workspace("CommonBuild")
 
 		common:addActions()
 
-if _OPTIONS["build-tests"] then
+if not _OPTIONS["build-pkg"] then
 	project("Tests")
-		location("%{wks.location}/")
+		location("Tests/")
 		warnings("Extra")
 
 		kind("ConsoleApp")
-		targetdir("%{wks.location}/CommonBuild/%{cfg.buildcfg}")
-		objdir("%{wks.location}/CommonBuild/%{cfg.buildcfg}")
+		common:outDirs()
 
 		includedirs({ "Tests/" })
 		files({ "Tests/**" })

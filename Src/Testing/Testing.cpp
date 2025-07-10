@@ -1,226 +1,309 @@
 #include "Testing/Testing.h"
+#include "State.h"
+#include "TestRunner.h"
 
-#include <chrono>
-#include <iomanip>
+#include <cassert>
+#include <cwchar>
+
+#include <format>
 #include <iostream>
-#include <sstream>
-#include <string>
 
 namespace Testing
 {
-	std::size_t s_TestCount    = 0;
-	std::size_t s_TestsSuccess = 0;
+	State* g_State = nullptr;
 
-	std::string_view s_GroupName;
-	std::size_t      s_GroupTestCount    = 0;
-	std::size_t      s_GroupTestsSuccess = 0;
-
-	void Begin()
+	void RunTest(TestState& test)
 	{
-		s_TestCount    = 0;
-		s_TestsSuccess = 0;
+		if (test.Result != ETestResult::NotRun)
+			return;
+
+#if !SUPPORT_SEPARATE_TEST_RUNNER
+		if (test.Desc.ExpectCrash || test.Desc.WillCrash)
+		{
+			test.Result = ETestResult::Fail;
+			return;
+		}
+#endif
+
+		try
+		{
+			test.Desc.OnTest();
+			test.Result = ETestResult::Success;
+		}
+		catch (ETestResult result)
+		{
+			test.Result = result;
+		}
+		catch (...)
+		{
+			test.Result = test.Desc.OnException() ? ETestResult::Success : ETestResult::Fail;
+		}
+	}
+
+	static std::vector<size_t> GetGroupPath(size_t id)
+	{
+		std::vector<size_t> path;
+		while (id != ~size_t(0))
+		{
+			path.emplace_back(id);
+			id = g_State->Groups[id].Parent;
+		}
+		std::reverse(path.begin(), path.end());
+		return path;
+	}
+
+	static size_t OutputGroupChange(size_t from, size_t to)
+	{
+		auto fromPath = GetGroupPath(from);
+		if (from == to)
+			return fromPath.size();
+		auto toPath = GetGroupPath(to);
+
+		size_t shared = 0;
+		while (shared < fromPath.size() && shared < toPath.size() && fromPath[shared] == toPath[shared])
+			++shared;
+
+		for (size_t i = fromPath.size(); i-- > shared;)
+		{
+			auto& group = g_State->Groups[fromPath[i]];
+
+			char colorI;
+			if (group.Success == group.Total)
+				colorI = '2';
+			else
+			{
+				double factor = (double) group.Success / group.Total;
+				if (factor < 0.5)
+					colorI = '1';
+				else
+					colorI = '3';
+			}
+
+			std::cout << std::format("{:{}}--- \033[3{}m{}/{}\033[39m ---\n", "", 2 * i, colorI, group.Success, group.Total);
+		}
+
+		for (size_t i = shared; i < toPath.size(); ++i)
+		{
+			auto& group = g_State->Groups[toPath[i]];
+
+			std::cout << std::format("{:{}}--- \033[36m{}\033[39m ---\n", "", 2 * i, group.Name);
+		}
+
+		return toPath.size();
+	}
+
+	void OutputTestResult(TestState& test)
+	{
+		if (test.Desc.Hidden)
+			return;
+
+		if (test.Result == ETestResult::Success)
+		{
+			auto cur = test.Group;
+			while (cur != ~size_t(0))
+			{
+				++g_State->Groups[cur].Success;
+				cur = g_State->Groups[cur].Parent;
+			}
+		}
+		if (g_State->IntCurOutputGroup != test.Group)
+		{
+			g_State->IntCurGroupDepth  = OutputGroupChange(g_State->IntCurOutputGroup, test.Group);
+			g_State->IntCurOutputGroup = test.Group;
+		}
+		std::string_view resultStr;
+		switch (test.Result)
+		{
+		case ETestResult::Success: resultStr = "  \033[32mSuccess"; break;
+		case ETestResult::Skip: resultStr = "     \033[33mSkip"; break;
+		case ETestResult::Fail: resultStr = "     \033[31mFail"; break;
+		case ETestResult::Crash: resultStr = "    \033[31mCrash"; break;
+		case ETestResult::TimedOut: resultStr = "\033[34mTimed Out"; break;
+		default: resultStr = "     \033[31mFAIL"; break;
+		}
+		std::cout << std::format("{:{}}{}\033[39m: {}\n", "", 2 * g_State->IntCurGroupDepth, resultStr, test.Name);
+	}
+
+	static void RunTestRecursive(TestState& test)
+	{
+		if (test.Result != ETestResult::NotRun)
+			return;
+
+		bool skip = false;
+		for (auto& dependency : test.Desc.Dependencies)
+		{
+			auto itr = g_State->IntTestToID.find(dependency);
+			if (itr == g_State->IntTestToID.end())
+			{
+				std::cerr << std::format("ERROR: '{}' is not a valid test name\n", dependency);
+				skip = true;
+				break;
+			}
+
+			auto& depTest = g_State->Tests[itr->second];
+			RunTestRecursive(depTest);
+			skip = skip || (depTest.Result != ETestResult::Success);
+		}
+
+		if (skip)
+		{
+			test.Result = test.Desc.ExpectSkip ? ETestResult::Success : ETestResult::Skip;
+			return;
+		}
+		if (test.Desc.ExpectSkip)
+		{
+			test.Result = ETestResult::Fail;
+			return;
+		}
+		RunTest(test);
+	}
+
+#if !SUPPORT_SEPARATE_TEST_RUNNER
+	static void RunTests()
+	{
+		for (auto failed : g_State->IntTestsFailed)
+			g_State->Tests[failed].Result = ETestResult::Fail;
+
+		for (size_t i = g_State->IntTestsStart; i < g_State->Tests.size(); ++i)
+		{
+			auto& test = g_State->Tests[i];
+
+			RunTestRecursive(test);
+			OutputTestResult(test);
+		}
+	}
+#endif
+
+	bool SupportsCrashHandling()
+	{
+		return SUPPORT_SEPARATE_TEST_RUNNER;
+	}
+
+	uint64_t GetFlagsForArgs(size_t argc, const char* const* argv)
+	{
+		uint64_t flags = 0;
+		for (size_t i = 0; i < argc; ++i)
+		{
+			std::string_view arg = argv[i];
+			if (arg.starts_with("__int_test_runner="))
+				flags |= c_IntTestRunner;
+		}
+		return flags;
+	}
+
+	void Begin(uint64_t flags)
+	{
+		g_State  = new State();
+		*g_State = {
+			.Flags = flags
+		};
+	}
+
+	void HandleArgs(size_t argc, const char* const* argv)
+	{
+		if (!g_State)
+			return;
+
+		for (size_t i = 0; i < argc; ++i)
+		{
+			std::string_view arg = argv[i];
+			if (arg.starts_with("__int_test_runner="))
+			{
+				uint64_t id        = std::strtoull(arg.substr(18).data(), nullptr, 10);
+				g_State->IntTestID = id;
+			}
+		}
 	}
 
 	void End()
 	{
-		std::ostringstream str;
-		str << "--- (";
-		if (s_TestsSuccess < s_TestCount)
-		{
-			float factor = static_cast<float>(s_TestsSuccess) / static_cast<float>(s_TestCount);
-			if (factor < 0.5)
-				str << "\033[31m";
-			else
-				str << "\033[33m";
-		}
+		if (!g_State)
+			std::exit(1);
+
+#if SUPPORT_SEPARATE_TEST_RUNNER
+		if (g_State->Flags & c_IntTestRunner)
+			RunTestRunner();
 		else
-		{
-			str << "\033[32m";
-		}
-		str << s_TestsSuccess << "/" << s_TestCount << "\033[39m) ---\n";
-		std::cout << str.str();
+			CreateTestRunner();
+#else
+		RunTests();
+#endif
+		OutputGroupChange(g_State->IntCurOutputGroup, ~size_t(0));
+
+		delete g_State;
+
+		std::exit(0);
 	}
 
-	void PushGroup(std::string_view name)
+	void PushGroup(std::string name)
 	{
-		s_GroupName         = name;
-		s_GroupTestCount    = 0;
-		s_GroupTestsSuccess = 0;
-		std::ostringstream str;
-		str << "--- " << name << " ---\n";
-		std::cout << str.str();
+		if (!g_State)
+			return;
+
+		g_State->Groups.emplace_back() = Group {
+			.Name   = std::move(name),
+			.Parent = g_State->GroupHierarchy.empty() ? ~size_t(0) : g_State->GroupHierarchy.back(),
+		};
+		g_State->GroupHierarchy.emplace_back(g_State->Groups.size() - 1);
+		if (!g_State->IntFullGroupName.empty())
+			g_State->IntFullGroupName += '.';
+		g_State->IntFullGroupName += g_State->Groups.back().Name;
 	}
 
 	void PopGroup()
 	{
-		std::ostringstream str;
-		str << "--- (";
-		if (s_GroupTestsSuccess < s_GroupTestCount)
-		{
-			float factor = static_cast<float>(s_GroupTestsSuccess) / static_cast<float>(s_GroupTestCount);
-			if (factor < 0.5)
-				str << "\033[31m";
-			else
-				str << "\033[33m";
-		}
-		else
-		{
-			str << "\033[32m";
-		}
-		str << s_GroupTestsSuccess << "/" << s_GroupTestCount << "\033[39m) ---\n";
-		std::cout << str.str();
+		if (!g_State)
+			return;
+
+		size_t groupNameLen = g_State->Groups[g_State->GroupHierarchy.back()].Name.size();
+		if (g_State->IntFullGroupName.size() != groupNameLen)
+			++groupNameLen;
+		g_State->IntFullGroupName.erase(g_State->IntFullGroupName.end() - groupNameLen, g_State->IntFullGroupName.end());
+		g_State->GroupHierarchy.pop_back();
 	}
 
-	enum class ETestResult
+	void Test(std::string name, TestDesc desc)
 	{
-		Success,
-		Fail,
-		Skip
-	};
+		if (!g_State)
+			return;
 
-	void Test(std::string_view name, TestFunc test, TestOnEndFunc onEnd)
-	{
-		++s_TestCount;
-		++s_GroupTestCount;
-
-		ETestResult result = ETestResult::Success;
-
-		try
+		g_State->Tests.emplace_back() = TestState {
+			.Name   = std::move(name),
+			.Group  = g_State->GroupHierarchy.empty() ? ~size_t(0) : g_State->GroupHierarchy.back(),
+			.Desc   = std::move(desc),
+			.Result = ETestResult::NotRun
+		};
+		if (!g_State->Tests.back().Desc.Hidden)
 		{
-			test();
-		}
-		catch (ETestResult res)
-		{
-			result = res;
-		}
-		catch (...)
-		{
-			result = ETestResult::Fail;
+			for (auto group : g_State->GroupHierarchy)
+				++g_State->Groups[group].Total;
 		}
 
-		std::ostringstream str;
-		switch (result)
-		{
-		case ETestResult::Success:
-			++s_GroupTestsSuccess;
-			++s_TestsSuccess;
-			str << "\033[32mSUCCESS: \033[39m" << name << '\n';
-			break;
-		case ETestResult::Fail:
-			str << "\033[31mFAIL:    \033[39m" << name << '\n';
-			break;
-		case ETestResult::Skip:
-			str << "\033[33mSKIP:    \033[39m" << name << '\n';
-			break;
-		}
-		std::cout << str.str();
-
-		if (onEnd)
-			onEnd();
+		std::string fullName = g_State->IntFullGroupName;
+		if (!fullName.empty())
+			fullName += '.';
+		fullName += g_State->Tests.back().Name;
+		g_State->IntTestToID.insert({ std::move(fullName), g_State->Tests.size() - 1 });
 	}
 
-	void TimedTest(std::string_view name, double baseline, TestFunc test, TestOnEndFunc onEnd)
+	void Expect(bool expectation)
 	{
-		using Clock = std::chrono::high_resolution_clock;
-
-		++s_TestCount;
-		++s_GroupTestCount;
-
-		ETestResult result = ETestResult::Success;
-		double      time   = 0.0;
-		std::size_t iters  = 0;
-
-		try
-		{
-			auto start = Clock::now();
-			while (true)
-			{
-				using namespace std::chrono_literals;
-				auto cur = Clock::now();
-				if ((cur - start) >= 100ms)
-					break;
-				test();
-				++iters;
-			}
-			auto end = Clock::now();
-			time     = std::chrono::duration_cast<std::chrono::duration<double, std::nano>>(end - start).count() / iters;
-		}
-		catch (ETestResult res)
-		{
-			result = res;
-		}
-		catch (...)
-		{
-			result = ETestResult::Fail;
-		}
-
-		std::ostringstream str;
-		switch (result)
-		{
-		case ETestResult::Success:
-		{
-			double factor = baseline / time;
-			if (factor < 0.5)
-			{
-				str << "\033[31m";
-			}
-			else if (factor < 0.75)
-			{
-				str << "\033[33m";
-			}
-			else
-			{
-				++s_GroupTestsSuccess;
-				++s_TestsSuccess;
-				str << "\033[32m";
-			}
-			str << std::scientific << std::setprecision(3) << time << '/' << std::scientific << std::setprecision(3) << baseline << ": \033[39m" << name << '\n';
-			break;
-		}
-		case ETestResult::Fail:
-			str << "\033[31mFAIL:    \033[39m" << name << '\n';
-			break;
-		case ETestResult::Skip:
-			str << "\033[33mSKIP:    \033[39m" << name << '\n';
-			break;
-		}
-		std::cout << str.str();
-
-		if (onEnd)
-			onEnd();
-	}
-
-	double TimedBasline(TestFunc test)
-	{
-		using Clock       = std::chrono::high_resolution_clock;
-		std::size_t iters = 0;
-		auto        start = Clock::now();
-		while (true)
-		{
-			using namespace std::chrono_literals;
-			auto cur = Clock::now();
-			if ((cur - start) >= 100ms)
-				break;
-			test();
-			++iters;
-		}
-		auto end = Clock::now();
-		return std::chrono::duration_cast<std::chrono::duration<double, std::nano>>(end - start).count() / iters;
-	}
-
-	void Assert(bool statement)
-	{
-		if (!statement)
+		if (!expectation)
 			Fail();
 	}
 
-	void Fail()
+	void Success()
 	{
-		throw ETestResult::Fail;
+		throw ETestResult::Success;
 	}
 
 	void Skip()
 	{
 		throw ETestResult::Skip;
+	}
+
+	void Fail()
+	{
+		throw ETestResult::Fail;
 	}
 } // namespace Testing
