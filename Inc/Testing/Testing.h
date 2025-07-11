@@ -56,10 +56,8 @@ namespace Testing
 		TimedOut
 	};
 
-	// With the new testing system there's no real need nor ability to use lambda captures.
-
-	using TestFn             = void (*)();
-	using ExceptionHandlerFn = bool (*)();
+	using TestFn             = std::function<void()>;
+	using ExceptionHandlerFn = std::function<bool()>;
 
 	struct TestSpec
 	{
