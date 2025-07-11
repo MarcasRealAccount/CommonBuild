@@ -16,6 +16,7 @@ namespace Testing
 		std::string Name;
 		size_t      Group  = ~size_t(0);
 		ETestResult Result = ETestResult::NotRun;
+		double      Time   = 0.0;
 
 		TestFn             OnPreTest   = nullptr;
 		TestFn             OnTest      = nullptr;
@@ -24,9 +25,12 @@ namespace Testing
 
 		std::vector<std::string> Dependencies;
 
-		ETestResult ExpectedResult = ETestResult::Success;
+		ETestResult ExpectedResult = ETestResult::NotRun;
 		bool        Hidden         = false;
 		bool        WillCrash      = false;
+
+		bool   Timed        = false;
+		double BaselineTime = 0.0;
 	};
 
 	struct Group

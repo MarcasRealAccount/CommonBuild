@@ -16,6 +16,7 @@
 namespace Testing
 {
 	void RunTest(TestState& test);
+	void RunTimedTest(TestState& test);
 	void OutputTestResult(TestState& test);
 
 	static std::string GetExeFilename()
@@ -149,6 +150,7 @@ namespace Testing
 			}
 
 			g_State->Tests[testID].Result = (ETestResult) packet.Data1[0];
+			g_State->Tests[testID].Time   = *(double*) &packet.Data2;
 
 			fSuccess = ReadFile(hPipe, &packet, sizeof(packet), &read, nullptr);
 			if (!fSuccess || read != sizeof(Packet) || packet.Cookie != PacketCookie || packet.Type != ReadyPacket)
@@ -232,6 +234,9 @@ namespace Testing
 							ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_EXCEPTION_NOT_HANDLED);
 							TerminateProcess(procInfo.hProcess, (DWORD) -1);
 							break;
+						case 0xE06D7363:
+							ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_EXCEPTION_NOT_HANDLED);
+							break;
 						default:
 							ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE);
 							break;
@@ -275,10 +280,26 @@ namespace Testing
 
 			while (currentTest < g_State->Tests.size())
 			{
-				bool cont = RunTestRecursive(currentTest, namedPipe, procInfo.hProcess, &overlapped);
-				if (g_State->Tests[currentTest].ExpectedResult == g_State->Tests[currentTest].Result)
-					g_State->Tests[currentTest].Result = ETestResult::Success;
-				OutputTestResult(g_State->Tests[currentTest]);
+				bool  cont = RunTestRecursive(currentTest, namedPipe, procInfo.hProcess, &overlapped);
+				auto& test = g_State->Tests[currentTest];
+				if (test.ExpectedResult != ETestResult::NotRun)
+				{
+					if (test.ExpectedResult == test.Result)
+					{
+						test.Result = ETestResult::Success;
+					}
+					else
+					{
+						switch (test.Result)
+						{
+						case ETestResult::Success:
+						case ETestResult::Skip:
+						case ETestResult::Fail: test.Result = ETestResult::Fail; break;
+						default: break;
+						}
+					}
+				}
+				OutputTestResult(test);
 				++currentTest;
 				if (!cont)
 					break;
@@ -344,9 +365,14 @@ namespace Testing
 			{
 				uint64_t test = packet.Data2;
 				if (test < g_State->Tests.size())
+				{
 					RunTest(g_State->Tests[test]);
+					if (g_State->Tests[test].Timed && g_State->Tests[test].Result == ETestResult::Success) // TODO: This shouldn't be here...
+						RunTimedTest(g_State->Tests[test]);
+				}
 				packet          = { .Type = ResultPacket };
 				packet.Data1[0] = (uint8_t) (test < g_State->Tests.size() ? g_State->Tests[test].Result : ETestResult::NotRun);
+				packet.Data2    = test < g_State->Tests.size() ? *(uint64_t*) &g_State->Tests[test].Time : 0;
 				fSuccess        = WriteFile(hPipe, &packet, sizeof(packet), &read, nullptr);
 				if (!fSuccess)
 					break;

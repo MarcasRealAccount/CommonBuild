@@ -44,23 +44,47 @@ static void RequiredSizeTests()
 	Testing::PushGroup("Required Size");
 
 	Testing::PushGroup("Generic");
-	Testing::Test("8-16", []() { RequiredSizeTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF16, UTF::EImpl::Generic>(c_U8Str, sizeof(c_U8Str) - 1, 144); });
-	Testing::Test("8-32", []() { RequiredSizeTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF32, UTF::EImpl::Generic>(c_U8Str, sizeof(c_U8Str) - 1, 236); });
-	Testing::Test("16-8", []() { RequiredSizeTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF8, UTF::EImpl::Generic>(c_U16Str, sizeof(c_U16Str) - 2, 145); });
-	Testing::Test("16-32", []() { RequiredSizeTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF32, UTF::EImpl::Generic>(c_U16Str, sizeof(c_U16Str) - 2, 236); });
-	Testing::Test("32-8", []() { RequiredSizeTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF8, UTF::EImpl::Generic>(c_U32Str, sizeof(c_U32Str) - 4, 145); });
-	Testing::Test("32-16", []() { RequiredSizeTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF16, UTF::EImpl::Generic>(c_U32Str, sizeof(c_U32Str) - 4, 144); });
+	Testing::Test("8-16")
+		.OnTest([]() { RequiredSizeTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF16, UTF::EImpl::Generic>(c_U8Str, sizeof(c_U8Str) - 1, 144); })
+		.Time();
+	Testing::Test("8-32")
+		.OnTest([]() { RequiredSizeTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF32, UTF::EImpl::Generic>(c_U8Str, sizeof(c_U8Str) - 1, 236); })
+		.Time();
+	Testing::Test("16-8")
+		.OnTest([]() { RequiredSizeTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF8, UTF::EImpl::Generic>(c_U16Str, sizeof(c_U16Str) - 2, 145); })
+		.Time();
+	Testing::Test("16-32")
+		.OnTest([]() { RequiredSizeTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF32, UTF::EImpl::Generic>(c_U16Str, sizeof(c_U16Str) - 2, 236); })
+		.Time();
+	Testing::Test("32-8")
+		.OnTest([]() { RequiredSizeTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF8, UTF::EImpl::Generic>(c_U32Str, sizeof(c_U32Str) - 4, 145); })
+		.Time();
+	Testing::Test("32-16")
+		.OnTest([]() { RequiredSizeTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF16, UTF::EImpl::Generic>(c_U32Str, sizeof(c_U32Str) - 4, 144); })
+		.Time();
 	Testing::PopGroup();
 
 	if constexpr (UTF::SIMD::c_Supported)
 	{
 		Testing::PushGroup("SIMD");
-		Testing::Test("8-16", []() { RequiredSizeTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF16, UTF::EImpl::SIMD>(c_U8Str, sizeof(c_U8Str) - 1, 144); });
-		Testing::Test("8-32", []() { RequiredSizeTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF32, UTF::EImpl::SIMD>(c_U8Str, sizeof(c_U8Str) - 1, 236); });
-		Testing::Test("16-8", []() { RequiredSizeTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF8, UTF::EImpl::SIMD>(c_U16Str, sizeof(c_U16Str) - 2, 145); });
-		Testing::Test("16-32", []() { RequiredSizeTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF32, UTF::EImpl::SIMD>(c_U16Str, sizeof(c_U16Str) - 2, 236); });
-		Testing::Test("32-8", []() { RequiredSizeTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF8, UTF::EImpl::SIMD>(c_U32Str, sizeof(c_U32Str) - 4, 145); });
-		Testing::Test("32-16", []() { RequiredSizeTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF16, UTF::EImpl::SIMD>(c_U32Str, sizeof(c_U32Str) - 4, 144); });
+		Testing::Test("8-16")
+			.OnTest([]() { RequiredSizeTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF16, UTF::EImpl::SIMD>(c_U8Str, sizeof(c_U8Str) - 1, 144); })
+			.Time();
+		Testing::Test("8-32")
+			.OnTest([]() { RequiredSizeTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF32, UTF::EImpl::SIMD>(c_U8Str, sizeof(c_U8Str) - 1, 236); })
+			.Time();
+		Testing::Test("16-8")
+			.OnTest([]() { RequiredSizeTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF8, UTF::EImpl::SIMD>(c_U16Str, sizeof(c_U16Str) - 2, 145); })
+			.Time();
+		Testing::Test("16-32")
+			.OnTest([]() { RequiredSizeTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF32, UTF::EImpl::SIMD>(c_U16Str, sizeof(c_U16Str) - 2, 236); })
+			.Time();
+		Testing::Test("32-8")
+			.OnTest([]() { RequiredSizeTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF8, UTF::EImpl::SIMD>(c_U32Str, sizeof(c_U32Str) - 4, 145); })
+			.Time();
+		Testing::Test("32-16")
+			.OnTest([]() { RequiredSizeTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF16, UTF::EImpl::SIMD>(c_U32Str, sizeof(c_U32Str) - 4, 144); })
+			.Time();
 		Testing::PopGroup();
 	}
 
@@ -74,23 +98,47 @@ static void ConvBlockTests()
 	Testing::PushGroup("Full");
 
 	Testing::PushGroup("Generic");
-	Testing::Test("8-16", []() { ConvBlockTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF16, UTF::EImpl::Generic>(c_U8Str, 67, 64, c_U16Str, 74); });
-	Testing::Test("8-32", []() { ConvBlockTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF32, UTF::EImpl::Generic>(c_U8Str, 67, 64, c_U32Str, 148); });
-	Testing::Test("16-8", []() { ConvBlockTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF8, UTF::EImpl::Generic>(c_U16Str, 66, 64, c_U8Str, 51); });
-	Testing::Test("16-32", []() { ConvBlockTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF32, UTF::EImpl::Generic>(c_U16Str, 66, 64, c_U32Str, 128); });
-	Testing::Test("32-8", []() { ConvBlockTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF8, UTF::EImpl::Generic>(c_U32Str, 64, 64, c_U8Str, 17); });
-	Testing::Test("32-16", []() { ConvBlockTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF16, UTF::EImpl::Generic>(c_U32Str, 64, 64, c_U16Str, 32); });
+	Testing::Test("8-16")
+		.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF16, UTF::EImpl::Generic>(c_U8Str, 67, 64, c_U16Str, 74); })
+		.Time();
+	Testing::Test("8-32")
+		.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF32, UTF::EImpl::Generic>(c_U8Str, 67, 64, c_U32Str, 148); })
+		.Time();
+	Testing::Test("16-8")
+		.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF8, UTF::EImpl::Generic>(c_U16Str, 66, 64, c_U8Str, 51); })
+		.Time();
+	Testing::Test("16-32")
+		.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF32, UTF::EImpl::Generic>(c_U16Str, 66, 64, c_U32Str, 128); })
+		.Time();
+	Testing::Test("32-8")
+		.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF8, UTF::EImpl::Generic>(c_U32Str, 64, 64, c_U8Str, 17); })
+		.Time();
+	Testing::Test("32-16")
+		.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF16, UTF::EImpl::Generic>(c_U32Str, 64, 64, c_U16Str, 32); })
+		.Time();
 	Testing::PopGroup();
 
 	if constexpr (UTF::SIMD::c_Supported)
 	{
 		Testing::PushGroup("SIMD");
-		Testing::Test("8-16", []() { ConvBlockTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF16, UTF::EImpl::SIMD>(c_U8Str, 67, 64, c_U16Str, 74); });
-		Testing::Test("8-32", []() { ConvBlockTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF32, UTF::EImpl::SIMD>(c_U8Str, 67, 64, c_U32Str, 148); });
-		Testing::Test("16-8", []() { ConvBlockTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF8, UTF::EImpl::SIMD>(c_U16Str, 66, 64, c_U8Str, 51); });
-		Testing::Test("16-32", []() { ConvBlockTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF32, UTF::EImpl::SIMD>(c_U16Str, 66, 64, c_U32Str, 128); });
-		Testing::Test("32-8", []() { ConvBlockTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF8, UTF::EImpl::SIMD>(c_U32Str, 64, 64, c_U8Str, 17); });
-		Testing::Test("32-16", []() { ConvBlockTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF16, UTF::EImpl::SIMD>(c_U32Str, 64, 64, c_U16Str, 32); });
+		Testing::Test("8-16")
+			.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF16, UTF::EImpl::SIMD>(c_U8Str, 67, 64, c_U16Str, 74); })
+			.Time();
+		Testing::Test("8-32")
+			.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF32, UTF::EImpl::SIMD>(c_U8Str, 67, 64, c_U32Str, 148); })
+			.Time();
+		Testing::Test("16-8")
+			.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF8, UTF::EImpl::SIMD>(c_U16Str, 66, 64, c_U8Str, 51); })
+			.Time();
+		Testing::Test("16-32")
+			.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF32, UTF::EImpl::SIMD>(c_U16Str, 66, 64, c_U32Str, 128); })
+			.Time();
+		Testing::Test("32-8")
+			.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF8, UTF::EImpl::SIMD>(c_U32Str, 64, 64, c_U8Str, 17); })
+			.Time();
+		Testing::Test("32-16")
+			.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF16, UTF::EImpl::SIMD>(c_U32Str, 64, 64, c_U16Str, 32); })
+			.Time();
 		Testing::PopGroup();
 	}
 	Testing::PopGroup();
@@ -98,23 +146,47 @@ static void ConvBlockTests()
 	Testing::PushGroup("Partial");
 
 	Testing::PushGroup("Generic");
-	Testing::Test("8-16", []() { ConvBlockTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF16, UTF::EImpl::Generic>(c_U8Str, 13, 10, c_U16Str, 20); });
-	Testing::Test("8-32", []() { ConvBlockTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF32, UTF::EImpl::Generic>(c_U8Str, 13, 10, c_U32Str, 40); });
-	Testing::Test("16-8", []() { ConvBlockTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF8, UTF::EImpl::Generic>(c_U16Str, 12, 10, c_U8Str, 5); });
-	Testing::Test("16-32", []() { ConvBlockTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF32, UTF::EImpl::Generic>(c_U16Str, 12, 10, c_U32Str, 20); });
-	Testing::Test("32-8", []() { ConvBlockTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF8, UTF::EImpl::Generic>(c_U32Str, 10, 10, c_U8Str, 3); });
-	Testing::Test("32-16", []() { ConvBlockTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF16, UTF::EImpl::Generic>(c_U32Str, 10, 10, c_U16Str, 6); });
+	Testing::Test("8-16")
+		.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF16, UTF::EImpl::Generic>(c_U8Str, 13, 10, c_U16Str, 20); })
+		.Time();
+	Testing::Test("8-32")
+		.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF32, UTF::EImpl::Generic>(c_U8Str, 13, 10, c_U32Str, 40); })
+		.Time();
+	Testing::Test("16-8")
+		.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF8, UTF::EImpl::Generic>(c_U16Str, 12, 10, c_U8Str, 5); })
+		.Time();
+	Testing::Test("16-32")
+		.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF32, UTF::EImpl::Generic>(c_U16Str, 12, 10, c_U32Str, 20); })
+		.Time();
+	Testing::Test("32-8")
+		.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF8, UTF::EImpl::Generic>(c_U32Str, 10, 10, c_U8Str, 3); })
+		.Time();
+	Testing::Test("32-16")
+		.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF16, UTF::EImpl::Generic>(c_U32Str, 10, 10, c_U16Str, 6); })
+		.Time();
 	Testing::PopGroup();
 
 	if constexpr (UTF::SIMD::c_Supported)
 	{
 		Testing::PushGroup("SIMD");
-		Testing::Test("8-16", []() { ConvBlockTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF16, UTF::EImpl::SIMD>(c_U8Str, 13, 10, c_U16Str, 20); });
-		Testing::Test("8-32", []() { ConvBlockTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF32, UTF::EImpl::SIMD>(c_U8Str, 13, 10, c_U32Str, 40); });
-		Testing::Test("16-8", []() { ConvBlockTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF8, UTF::EImpl::SIMD>(c_U16Str, 12, 10, c_U8Str, 5); });
-		Testing::Test("16-32", []() { ConvBlockTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF32, UTF::EImpl::SIMD>(c_U16Str, 12, 10, c_U32Str, 20); });
-		Testing::Test("32-8", []() { ConvBlockTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF8, UTF::EImpl::SIMD>(c_U32Str, 10, 10, c_U8Str, 3); });
-		Testing::Test("32-16", []() { ConvBlockTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF16, UTF::EImpl::SIMD>(c_U32Str, 10, 10, c_U16Str, 6); });
+		Testing::Test("8-16")
+			.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF16, UTF::EImpl::SIMD>(c_U8Str, 13, 10, c_U16Str, 20); })
+			.Time();
+		Testing::Test("8-32")
+			.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF32, UTF::EImpl::SIMD>(c_U8Str, 13, 10, c_U32Str, 40); })
+			.Time();
+		Testing::Test("16-8")
+			.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF8, UTF::EImpl::SIMD>(c_U16Str, 12, 10, c_U8Str, 5); })
+			.Time();
+		Testing::Test("16-32")
+			.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF32, UTF::EImpl::SIMD>(c_U16Str, 12, 10, c_U32Str, 20); })
+			.Time();
+		Testing::Test("32-8")
+			.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF8, UTF::EImpl::SIMD>(c_U32Str, 10, 10, c_U8Str, 3); })
+			.Time();
+		Testing::Test("32-16")
+			.OnTest([]() { ConvBlockTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF16, UTF::EImpl::SIMD>(c_U32Str, 10, 10, c_U16Str, 6); })
+			.Time();
 		Testing::PopGroup();
 	}
 	Testing::PopGroup();
@@ -129,22 +201,28 @@ static void ConvTests()
 	Testing::PushGroup("Generic");
 	Testing::Test("8-16")
 		.OnTest([]() { ConvTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF16, UTF::EImpl::Generic>(c_U8Str, sizeof(c_U8Str), c_U16Str, sizeof(c_U16Str)); })
-		.Dependencies("UTF.Convert Block.Full.Generic.8-16", "UTF.Convert Block.Partial.Generic.8-16");
+		.Dependencies("UTF.Convert Block.Full.Generic.8-16", "UTF.Convert Block.Partial.Generic.8-16")
+		.Time();
 	Testing::Test("8-32")
 		.OnTest([]() { ConvTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF32, UTF::EImpl::Generic>(c_U8Str, sizeof(c_U8Str), c_U32Str, sizeof(c_U32Str)); })
-		.Dependencies("UTF.Convert Block.Full.Generic.8-32", "UTF.Convert Block.Partial.Generic.8-32");
+		.Dependencies("UTF.Convert Block.Full.Generic.8-32", "UTF.Convert Block.Partial.Generic.8-32")
+		.Time();
 	Testing::Test("16-8")
 		.OnTest([]() { ConvTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF8, UTF::EImpl::Generic>(c_U16Str, sizeof(c_U16Str), c_U8Str, sizeof(c_U8Str)); })
-		.Dependencies("UTF.Convert Block.Full.Generic.16-8", "UTF.Convert Block.Partial.Generic.16-8");
+		.Dependencies("UTF.Convert Block.Full.Generic.16-8", "UTF.Convert Block.Partial.Generic.16-8")
+		.Time();
 	Testing::Test("16-32")
 		.OnTest([]() { ConvTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF32, UTF::EImpl::Generic>(c_U16Str, sizeof(c_U16Str), c_U32Str, sizeof(c_U32Str)); })
-		.Dependencies("UTF.Convert Block.Full.Generic.16-32", "UTF.Convert Block.Partial.Generic.16-32");
+		.Dependencies("UTF.Convert Block.Full.Generic.16-32", "UTF.Convert Block.Partial.Generic.16-32")
+		.Time();
 	Testing::Test("32-8")
 		.OnTest([]() { ConvTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF8, UTF::EImpl::Generic>(c_U32Str, sizeof(c_U32Str), c_U8Str, sizeof(c_U8Str)); })
-		.Dependencies("UTF.Convert Block.Full.Generic.32-8", "UTF.Convert Block.Partial.Generic.32-8");
+		.Dependencies("UTF.Convert Block.Full.Generic.32-8", "UTF.Convert Block.Partial.Generic.32-8")
+		.Time();
 	Testing::Test("32-16")
 		.OnTest([]() { ConvTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF16, UTF::EImpl::Generic>(c_U32Str, sizeof(c_U32Str), c_U16Str, sizeof(c_U16Str)); })
-		.Dependencies("UTF.Convert Block.Full.Generic.32-16", "UTF.Convert Block.Partial.Generic.32-16");
+		.Dependencies("UTF.Convert Block.Full.Generic.32-16", "UTF.Convert Block.Partial.Generic.32-16")
+		.Time();
 	Testing::PopGroup();
 
 	if constexpr (UTF::SIMD::c_Supported)
@@ -152,22 +230,28 @@ static void ConvTests()
 		Testing::PushGroup("SIMD");
 		Testing::Test("8-16")
 			.OnTest([]() { ConvTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF16, UTF::EImpl::SIMD>(c_U8Str, sizeof(c_U8Str), c_U16Str, sizeof(c_U16Str)); })
-			.Dependencies("UTF.Convert Block.Full.SIMD.8-16", "UTF.Convert Block.Partial.SIMD.8-16");
+			.Dependencies("UTF.Convert Block.Full.SIMD.8-16", "UTF.Convert Block.Partial.SIMD.8-16")
+			.Time();
 		Testing::Test("8-32")
 			.OnTest([]() { ConvTest<UTF::EEncoding::UTF8, UTF::EEncoding::UTF32, UTF::EImpl::SIMD>(c_U8Str, sizeof(c_U8Str), c_U32Str, sizeof(c_U32Str)); })
-			.Dependencies("UTF.Convert Block.Full.SIMD.8-32", "UTF.Convert Block.Partial.SIMD.8-32");
+			.Dependencies("UTF.Convert Block.Full.SIMD.8-32", "UTF.Convert Block.Partial.SIMD.8-32")
+			.Time();
 		Testing::Test("16-8")
 			.OnTest([]() { ConvTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF8, UTF::EImpl::SIMD>(c_U16Str, sizeof(c_U16Str), c_U8Str, sizeof(c_U8Str)); })
-			.Dependencies("UTF.Convert Block.Full.SIMD.16-8", "UTF.Convert Block.Partial.SIMD.16-8");
+			.Dependencies("UTF.Convert Block.Full.SIMD.16-8", "UTF.Convert Block.Partial.SIMD.16-8")
+			.Time();
 		Testing::Test("16-32")
 			.OnTest([]() { ConvTest<UTF::EEncoding::UTF16, UTF::EEncoding::UTF32, UTF::EImpl::SIMD>(c_U16Str, sizeof(c_U16Str), c_U32Str, sizeof(c_U32Str)); })
-			.Dependencies("UTF.Convert Block.Full.SIMD.16-32", "UTF.Convert Block.Partial.SIMD.16-32");
+			.Dependencies("UTF.Convert Block.Full.SIMD.16-32", "UTF.Convert Block.Partial.SIMD.16-32")
+			.Time();
 		Testing::Test("32-8")
 			.OnTest([]() { ConvTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF8, UTF::EImpl::SIMD>(c_U32Str, sizeof(c_U32Str), c_U8Str, sizeof(c_U8Str)); })
-			.Dependencies("UTF.Convert Block.Full.SIMD.32-8", "UTF.Convert Block.Partial.SIMD.32-8");
+			.Dependencies("UTF.Convert Block.Full.SIMD.32-8", "UTF.Convert Block.Partial.SIMD.32-8")
+			.Time();
 		Testing::Test("32-16")
 			.OnTest([]() { ConvTest<UTF::EEncoding::UTF32, UTF::EEncoding::UTF16, UTF::EImpl::SIMD>(c_U32Str, sizeof(c_U32Str), c_U16Str, sizeof(c_U16Str)); })
-			.Dependencies("UTF.Convert Block.Full.SIMD.32-16", "UTF.Convert Block.Partial.SIMD.32-16");
+			.Dependencies("UTF.Convert Block.Full.SIMD.32-16", "UTF.Convert Block.Partial.SIMD.32-16")
+			.Time();
 		Testing::PopGroup();
 	}
 	Testing::PopGroup();

@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cwchar>
 
+#include <chrono>
 #include <format>
 #include <iostream>
 
@@ -39,8 +40,43 @@ namespace Testing
 		}
 		catch (...)
 		{
-			test.Result = test.OnException && test.OnException() ? ETestResult::Success : ETestResult::Fail;
+			if (test.OnException && test.OnException())
+				test.Result = ETestResult::Success;
+			else
+				test.Result = ETestResult::Crash;
 		}
+	}
+
+	void RunTimedTest(TestState& test)
+	{
+		using Clock = std::chrono::steady_clock;
+		using namespace std::chrono_literals;
+
+		// It doesn't make sense to time broken functions. We should only time tests that expect functional success.
+		if ((test.ExpectedResult != ETestResult::NotRun && test.ExpectedResult != ETestResult::Success) || test.WillCrash || test.OnException)
+		{
+			test.Time = -1.0;
+			return;
+		}
+
+		if (test.OnPreTest)
+			test.OnPreTest();
+
+		size_t iters     = 0;
+		auto   begin     = Clock::now();
+		auto   targetEnd = begin + 2s;
+		auto   cur       = Clock::now();
+		while (cur < targetEnd && iters < 1000)
+		{
+			test.OnTest();
+			cur = Clock::now();
+			++iters;
+		}
+
+		test.Time = std::chrono::duration_cast<std::chrono::duration<double>>(cur - begin).count() / iters;
+
+		if (test.OnPostTest)
+			test.OnPostTest();
 	}
 
 	static std::vector<size_t> GetGroupPath(size_t id)
@@ -95,6 +131,42 @@ namespace Testing
 		return toPath.size();
 	}
 
+	static void PrettyFormatTime(double time, char& unit, uint16_t& whole, uint16_t& decimal)
+	{
+		if (time == 0.0)
+		{
+			unit    = ' ';
+			whole   = 0;
+			decimal = 0;
+			return;
+		}
+
+		constexpr const char c_Units[] = "qryzafpnum kMGTPEZYRQ";
+
+		int8_t exponent = 0;
+		while (time >= 1000.0)
+		{
+			++exponent;
+			time /= 1000.0;
+		}
+		while (time < 1.0)
+		{
+			--exponent;
+			time *= 1000.0;
+		}
+
+		whole   = (uint16_t) time;
+		time   -= whole;
+		time   *= 1000.0;
+		decimal = (uint16_t) time;
+
+		exponent += 10;
+		if (exponent < 0 || exponent >= sizeof(c_Units) - 1)
+			unit = '?';
+		else
+			unit = c_Units[exponent];
+	}
+
 	void OutputTestResult(TestState& test)
 	{
 		if (test.Hidden)
@@ -117,14 +189,44 @@ namespace Testing
 		std::string_view resultStr;
 		switch (test.Result)
 		{
-		case ETestResult::Success: resultStr = "  \033[32mSuccess"; break;
-		case ETestResult::Skip: resultStr = "     \033[33mSkip"; break;
-		case ETestResult::Fail: resultStr = "     \033[31mFail"; break;
-		case ETestResult::Crash: resultStr = "    \033[31mCrash"; break;
-		case ETestResult::TimedOut: resultStr = "\033[34mTimed Out"; break;
-		default: resultStr = "     \033[31mFAIL"; break;
+		case ETestResult::Success: resultStr = "  \033[32mSuccess\033[39m"; break;
+		case ETestResult::Skip: resultStr = "     \033[33mSkip\033[39m"; break;
+		case ETestResult::Fail: resultStr = "     \033[31mFail\033[39m"; break;
+		case ETestResult::Crash: resultStr = "    \033[31mCrash\033[39m"; break;
+		case ETestResult::TimedOut: resultStr = "\033[34mTimed Out\033[39m"; break;
+		default: resultStr = "     \033[31mFAIL\033[39m"; break;
 		}
-		std::cout << std::format("{:{}}{}\033[39m: {}\n", "", 2 * g_State->IntCurGroupDepth, resultStr, test.Name);
+		if (test.Timed && test.Result == ETestResult::Success && test.Time >= 0.0)
+		{
+			char     timeUnit;
+			uint16_t timeWhole;
+			uint16_t timeDecimal;
+			PrettyFormatTime(test.Time, timeUnit, timeWhole, timeDecimal);
+			if (test.BaselineTime > 0.0)
+			{
+				char timeColorI;
+				if (test.Time < test.BaselineTime)
+					timeColorI = '2';
+				else if (test.Time > test.BaselineTime * 1.2)
+					timeColorI = '1';
+				else
+					timeColorI = '3';
+
+				char     baselineUnit;
+				uint16_t baselineWhole;
+				uint16_t baselineDecimal;
+				PrettyFormatTime(test.BaselineTime, baselineUnit, baselineWhole, baselineDecimal);
+				std::cout << std::format("{:{}}{} (\033[3{}m{:3}.{:03}{}s/{:3}.{:03}{}s\033[39m): {}\n", "", 2 * g_State->IntCurGroupDepth, resultStr, timeColorI, timeWhole, timeDecimal, timeUnit, baselineWhole, baselineDecimal, baselineUnit, test.Name);
+			}
+			else
+			{
+				std::cout << std::format("{:{}}{} (\033[32m{:3}.{:03}{}s\033[39m): {}\n", "", 2 * g_State->IntCurGroupDepth, resultStr, timeWhole, timeDecimal, timeUnit, test.Name);
+			}
+		}
+		else
+		{
+			std::cout << std::format("{:{}}{}: {}\n", "", 2 * g_State->IntCurGroupDepth, resultStr, test.Name);
+		}
 	}
 
 #if !SUPPORT_SEPARATE_TEST_RUNNER
@@ -172,6 +274,9 @@ namespace Testing
 			return;
 		if (test.OnPostTest)
 			test.OnPostTest();
+
+		if (test.Timed && test.Result == ETestResult::Success)
+			RunTimedTest(test);
 	}
 
 	static void RunTests()
@@ -184,8 +289,23 @@ namespace Testing
 			auto& test = g_State->Tests[i];
 
 			RunTestRecursive(test);
-			if (test.ExpectedResult == test.Result)
-				test.Result = ETestResult::Success;
+			if (test.ExpectedResult != ETestResult::NotRun)
+			{
+				if (test.ExpectedResult == test.Result)
+				{
+					test.Result = ETestResult::Success;
+				}
+				else
+				{
+					switch (test.Result)
+					{
+					case ETestResult::Success:
+					case ETestResult::Skip:
+					case ETestResult::Fail: test.Result = ETestResult::Fail; break;
+					default: break;
+					}
+				}
+			}
 			OutputTestResult(test);
 		}
 	}
@@ -324,6 +444,13 @@ namespace Testing
 	TestSpec& TestSpec::WillCrash()
 	{
 		((TestState*) this)->WillCrash = true;
+		return *this;
+	}
+
+	TestSpec& TestSpec::Time(double baselineTime)
+	{
+		((TestState*) this)->Timed        = true;
+		((TestState*) this)->BaselineTime = baselineTime;
 		return *this;
 	}
 

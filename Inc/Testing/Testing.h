@@ -80,6 +80,8 @@ namespace Testing
 
 		TestSpec& Hide();
 		TestSpec& WillCrash();
+
+		TestSpec& Time(double baselineTime = 0.0);
 	};
 
 	struct TestDesc
@@ -94,10 +96,13 @@ namespace Testing
 		bool ExpectSkip  = false;
 		bool Hidden      = false;
 		bool WillCrash   = false;
+
+		bool   Timed        = false;
+		double BaselineTime = 0.0;
 	};
 
-	TestSpec&   Test(std::string name);
-	inline void Test(std::string name, TestDesc desc)
+	TestSpec&        Test(std::string name);
+	inline TestSpec& Test(std::string name, TestDesc desc)
 	{
 		auto& spec = Test(std::move(name))
 						 .OnPreTest(std::move(desc.OnPreTest))
@@ -113,10 +118,13 @@ namespace Testing
 			spec.Hide();
 		if (desc.WillCrash)
 			spec.WillCrash();
+		if (desc.Timed)
+			spec.Time(desc.BaselineTime);
+		return spec;
 	}
-	inline void Test(std::string name, TestFn&& onTest)
+	inline TestSpec& Test(std::string name, TestFn&& onTest)
 	{
-		Test(name, TestDesc { .OnTest = std::move(onTest) });
+		return Test(name).OnTest(std::move(onTest));
 	}
 
 	void Expect(bool expectation);

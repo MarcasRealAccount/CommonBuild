@@ -11,6 +11,12 @@ extern void UTFTests();
 void RegisterTests()
 {
 	Testing::PushGroup("Testing");
+	Testing::Test("Skip")
+		.OnTest([]() { Testing::Skip(); })
+		.ExpectResult(Testing::ETestResult::Skip);
+	Testing::Test("Fail")
+		.OnTest([]() { Testing::Fail(); })
+		.ExpectResult(Testing::ETestResult::Fail);
 	Testing::Test("Exception test")
 		.OnTest([]() { throw 0; })
 		.OnException(Testing::ExpectExceptions<int>);
