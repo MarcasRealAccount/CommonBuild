@@ -90,7 +90,7 @@ namespace Testing
 			return true;
 
 		bool skip = false;
-		for (auto& dependency : test.Desc.Dependencies)
+		for (auto& dependency : test.Dependencies)
 		{
 			auto itr = g_State->IntTestToID.find(dependency);
 			if (itr == g_State->IntTestToID.end())
@@ -101,17 +101,24 @@ namespace Testing
 			}
 
 			RunTestRecursive(itr->second, hPipe, hProc, pOverlapped);
+			if (g_State->Tests[itr->second].ExpectedResult == g_State->Tests[itr->second].Result)
+				g_State->Tests[itr->second].Result = ETestResult::Success;
 			skip = skip || (g_State->Tests[itr->second].Result != ETestResult::Success);
+		}
+
+		if (!test.Hidden)
+		{
+			auto cur = test.Group;
+			while (cur != ~size_t(0))
+			{
+				++g_State->Groups[cur].Total;
+				cur = g_State->Groups[cur].Parent;
+			}
 		}
 
 		if (skip)
 		{
-			test.Result = test.Desc.ExpectSkip ? ETestResult::Success : ETestResult::Skip;
-			return true;
-		}
-		if (test.Desc.ExpectSkip)
-		{
-			test.Result = ETestResult::Fail;
+			test.Result = ETestResult::Skip;
 			return true;
 		}
 
@@ -137,7 +144,7 @@ namespace Testing
 			fSuccess = GetOverlappedResult(hPipe, pOverlapped, &read, false);
 			if (!fSuccess || read != sizeof(Packet) || packet.Cookie != PacketCookie || packet.Type != ResultPacket)
 			{
-				g_State->Tests[testID].Result = test.Desc.ExpectCrash ? ETestResult::Success : ETestResult::Crash;
+				g_State->Tests[testID].Result = ETestResult::Crash;
 				return false;
 			}
 
@@ -269,6 +276,8 @@ namespace Testing
 			while (currentTest < g_State->Tests.size())
 			{
 				bool cont = RunTestRecursive(currentTest, namedPipe, procInfo.hProcess, &overlapped);
+				if (g_State->Tests[currentTest].ExpectedResult == g_State->Tests[currentTest].Result)
+					g_State->Tests[currentTest].Result = ETestResult::Success;
 				OutputTestResult(g_State->Tests[currentTest]);
 				++currentTest;
 				if (!cont)
@@ -341,8 +350,8 @@ namespace Testing
 				fSuccess        = WriteFile(hPipe, &packet, sizeof(packet), &read, nullptr);
 				if (!fSuccess)
 					break;
-				if (test < g_State->Tests.size() && g_State->Tests[test].Desc.OnPostTest)
-					g_State->Tests[test].Desc.OnPostTest();
+				if (test < g_State->Tests.size() && g_State->Tests[test].OnPostTest)
+					g_State->Tests[test].OnPostTest();
 
 				packet   = { .Type = ReadyPacket };
 				fSuccess = WriteFile(hPipe, &packet, sizeof(packet), &read, nullptr);

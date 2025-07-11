@@ -18,19 +18,19 @@ namespace Testing
 			return;
 
 #if !SUPPORT_SEPARATE_TEST_RUNNER
-		if (test.Desc.ExpectCrash || test.Desc.WillCrash)
+		if (test.ExpectedResult == ETestResult::Crash || test.WillCrash)
 		{
 			test.Result = ETestResult::Fail;
 			return;
 		}
 #endif
 
-		if (test.Desc.OnPreTest)
-			test.Desc.OnPreTest();
+		if (test.OnPreTest)
+			test.OnPreTest();
 
 		try
 		{
-			test.Desc.OnTest();
+			test.OnTest();
 			test.Result = ETestResult::Success;
 		}
 		catch (ETestResult result)
@@ -39,7 +39,7 @@ namespace Testing
 		}
 		catch (...)
 		{
-			test.Result = test.Desc.OnException() ? ETestResult::Success : ETestResult::Fail;
+			test.Result = test.OnException && test.OnException() ? ETestResult::Success : ETestResult::Fail;
 		}
 	}
 
@@ -97,7 +97,7 @@ namespace Testing
 
 	void OutputTestResult(TestState& test)
 	{
-		if (test.Desc.Hidden)
+		if (test.Hidden)
 			return;
 
 		if (test.Result == ETestResult::Success)
@@ -134,7 +134,7 @@ namespace Testing
 			return;
 
 		bool skip = false;
-		for (auto& dependency : test.Desc.Dependencies)
+		for (auto& dependency : test.Dependencies)
 		{
 			auto itr = g_State->IntTestToID.find(dependency);
 			if (itr == g_State->IntTestToID.end())
@@ -146,25 +146,32 @@ namespace Testing
 
 			auto& depTest = g_State->Tests[itr->second];
 			RunTestRecursive(depTest);
+			if (depTest.ExpectedResult == depTest.Result)
+				depTest.Result = ETestResult::Success;
 			skip = skip || (depTest.Result != ETestResult::Success);
+		}
+
+		if (!test.Hidden)
+		{
+			auto cur = test.Group;
+			while (cur != ~size_t(0))
+			{
+				++g_State->Groups[cur].Total;
+				cur = g_State->Groups[cur].Parent;
+			}
 		}
 
 		if (skip)
 		{
-			test.Result = test.Desc.ExpectSkip ? ETestResult::Success : ETestResult::Skip;
-			return;
-		}
-		if (test.Desc.ExpectSkip)
-		{
-			test.Result = ETestResult::Fail;
+			test.Result = ETestResult::Skip;
 			return;
 		}
 		RunTest(test);
 
-		if (test.Desc.WillCrash)
+		if (test.WillCrash)
 			return;
-		if (test.Desc.OnPostTest)
-			test.Desc.OnPostTest();
+		if (test.OnPostTest)
+			test.OnPostTest();
 	}
 
 	static void RunTests()
@@ -177,6 +184,8 @@ namespace Testing
 			auto& test = g_State->Tests[i];
 
 			RunTestRecursive(test);
+			if (test.ExpectedResult == test.Result)
+				test.Result = ETestResult::Success;
 			OutputTestResult(test);
 		}
 	}
@@ -270,28 +279,74 @@ namespace Testing
 		g_State->GroupHierarchy.pop_back();
 	}
 
-	void Test(std::string name, TestDesc desc)
+	TestSpec& TestSpec::OnPreTest(TestFn&& onPreTest)
 	{
-		if (!g_State)
-			return;
+		((TestState*) this)->OnPreTest = std::move(onPreTest);
+		return *this;
+	}
 
-		g_State->Tests.emplace_back() = TestState {
+	TestSpec& TestSpec::OnTest(TestFn&& onTest)
+	{
+		((TestState*) this)->OnTest = std::move(onTest);
+		return *this;
+	}
+
+	TestSpec& TestSpec::OnPostTest(TestFn&& onPostTest)
+	{
+		((TestState*) this)->OnPostTest = std::move(onPostTest);
+		return *this;
+	}
+
+	TestSpec& TestSpec::OnException(ExceptionHandlerFn&& onException)
+	{
+		((TestState*) this)->OnException = std::move(onException);
+		return *this;
+	}
+
+	TestSpec& TestSpec::Dependencies(std::vector<std::string> dependencies)
+	{
+		((TestState*) this)->Dependencies = std::move(dependencies);
+		return *this;
+	}
+
+	TestSpec& TestSpec::ExpectResult(ETestResult result)
+	{
+		((TestState*) this)->ExpectedResult = result;
+		return *this;
+	}
+
+	TestSpec& TestSpec::Hide()
+	{
+		((TestState*) this)->Hidden = true;
+		return *this;
+	}
+
+	TestSpec& TestSpec::WillCrash()
+	{
+		((TestState*) this)->WillCrash = true;
+		return *this;
+	}
+
+	TestSpec& Test(std::string name)
+	{
+		assert(g_State && "Testing::Test() must be called between Testing::Begin() and Testing::End()");
+		if (!g_State)
+			exit(0);
+
+		auto& test = g_State->Tests.emplace_back();
+
+		test = TestState {
 			.Name   = std::move(name),
 			.Group  = g_State->GroupHierarchy.empty() ? ~size_t(0) : g_State->GroupHierarchy.back(),
-			.Desc   = std::move(desc),
 			.Result = ETestResult::NotRun
 		};
-		if (!g_State->Tests.back().Desc.Hidden)
-		{
-			for (auto group : g_State->GroupHierarchy)
-				++g_State->Groups[group].Total;
-		}
 
 		std::string fullName = g_State->IntFullGroupName;
 		if (!fullName.empty())
 			fullName += '.';
-		fullName += g_State->Tests.back().Name;
+		fullName += test.Name;
 		g_State->IntTestToID.insert({ std::move(fullName), g_State->Tests.size() - 1 });
+		return *(TestSpec*) &test;
 	}
 
 	void Expect(bool expectation)

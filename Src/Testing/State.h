@@ -11,22 +11,22 @@
 
 namespace Testing
 {
-	enum class ETestResult : uint8_t
-	{
-		NotRun,
-		Success,
-		Skip,
-		Fail,
-		Crash,
-		TimedOut
-	};
-
 	struct TestState
 	{
 		std::string Name;
-		size_t      Group = 0;
-		TestDesc    Desc;
+		size_t      Group  = ~size_t(0);
 		ETestResult Result = ETestResult::NotRun;
+
+		TestFn             OnPreTest   = nullptr;
+		TestFn             OnTest      = nullptr;
+		TestFn             OnPostTest  = nullptr;
+		ExceptionHandlerFn OnException = nullptr;
+
+		std::vector<std::string> Dependencies;
+
+		ETestResult ExpectedResult = ETestResult::Success;
+		bool        Hidden         = false;
+		bool        WillCrash      = false;
 	};
 
 	struct Group

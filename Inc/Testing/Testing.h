@@ -46,23 +46,75 @@ namespace Testing
 	void PushGroup(std::string name);
 	void PopGroup();
 
+	enum class ETestResult : uint8_t
+	{
+		NotRun,
+		Success,
+		Skip,
+		Fail,
+		Crash,
+		TimedOut
+	};
+
+	// With the new testing system there's no real need nor ability to use lambda captures.
+
+	using TestFn             = void (*)();
+	using ExceptionHandlerFn = bool (*)();
+
+	struct TestSpec
+	{
+		TestSpec& OnPreTest(TestFn&& onPreTest);
+		TestSpec& OnTest(TestFn&& onTest);
+		TestSpec& OnPostTest(TestFn&& onPostTest);
+		TestSpec& OnException(ExceptionHandlerFn&& onException);
+		TestSpec& Dependencies(std::vector<std::string> dependencies);
+		template <std::convertible_to<std::string>... Ts>
+		TestSpec& Dependencies(Ts&&... dependencies)
+		{
+			return Dependencies(std::vector<std::string> { std::move(dependencies)... });
+		}
+
+		TestSpec& ExpectResult(ETestResult result);
+		TestSpec& ExpectSkip() { return ExpectResult(ETestResult::Skip); }
+		TestSpec& ExpectCrash() { return ExpectResult(ETestResult::Crash); }
+
+		TestSpec& Hide();
+		TestSpec& WillCrash();
+	};
+
 	struct TestDesc
 	{
-		std::function<void()>    OnPreTest;
-		std::function<void()>    OnTest;
-		std::function<void()>    OnPostTest;
+		TestFn                   OnPreTest;
+		TestFn                   OnTest;
+		TestFn                   OnPostTest;
 		std::vector<std::string> Dependencies;
-		std::function<bool()>    OnException = []() {
-            return false;
-		};
+		ExceptionHandlerFn       OnException;
+
 		bool ExpectCrash = false;
 		bool ExpectSkip  = false;
 		bool Hidden      = false;
 		bool WillCrash   = false;
 	};
 
-	void Test(std::string name, TestDesc desc);
-	void Test(std::string name, std::invocable<> auto&& onTest)
+	TestSpec&   Test(std::string name);
+	inline void Test(std::string name, TestDesc desc)
+	{
+		auto& spec = Test(std::move(name))
+						 .OnPreTest(std::move(desc.OnPreTest))
+						 .OnTest(std::move(desc.OnTest))
+						 .OnPostTest(std::move(desc.OnPostTest))
+						 .OnException(std::move(desc.OnException))
+						 .Dependencies(std::move(desc.Dependencies));
+		if (desc.ExpectCrash)
+			spec.ExpectCrash();
+		if (desc.ExpectSkip)
+			spec.ExpectSkip();
+		if (desc.Hidden)
+			spec.Hide();
+		if (desc.WillCrash)
+			spec.WillCrash();
+	}
+	inline void Test(std::string name, TestFn&& onTest)
 	{
 		Test(name, TestDesc { .OnTest = std::move(onTest) });
 	}

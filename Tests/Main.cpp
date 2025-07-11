@@ -1,54 +1,31 @@
 #define TESTING_ENTRYPOINT
 #include <Testing/Testing.h>
 
-#include <cassert>
 #include <iostream>
+
+#undef NDEBUG
+#include <cassert>
 
 extern void UTFTests();
 
 void RegisterTests()
 {
 	Testing::PushGroup("Testing");
-	Testing::Test(
-		"Exception test",
-		{
-			.OnTest = []() {
-				throw 0;
-			},
-			.OnException = Testing::ExpectAnyException,
-		});
-	Testing::Test(
-		"Crash test",
-		{
-			.OnTest = []() {
-				throw *(int*) 0;
-			},
-			.ExpectCrash = true,
-		});
-	Testing::Test(
-		"Exit test",
-		{
-			.OnTest = []() {
-				std::exit(0);
-			},
-			.ExpectCrash = true,
-		});
-	Testing::Test(
-		"Terminate test",
-		{
-			.OnTest = []() {
-				std::terminate();
-			},
-			.ExpectCrash = true,
-		});
-	Testing::Test(
-		"Assert test",
-		{
-			.OnTest = []() {
-				assert(false);
-			},
-			.ExpectCrash = true,
-		});
+	Testing::Test("Exception test")
+		.OnTest([]() { throw 0; })
+		.OnException(Testing::ExpectExceptions<int>);
+	Testing::Test("Crash test")
+		.OnTest([]() { throw *(int*) 0; })
+		.ExpectCrash();
+	Testing::Test("Exit test")
+		.OnTest([]() { std::exit(0); })
+		.ExpectCrash();
+	Testing::Test("Terminate test")
+		.OnTest([]() { std::terminate(); })
+		.ExpectCrash();
+	Testing::Test("Assert test")
+		.OnTest([]() { assert(false); })
+		.ExpectCrash();
 
 	Testing::PushGroup("SubGroup");
 	Testing::Test("In SubGroup", []() { Testing::Success(); });
@@ -56,29 +33,18 @@ void RegisterTests()
 
 	Testing::Test("After SubGroup", []() { Testing::Success(); });
 
-	Testing::Test(
-		"Hidden",
-		{
-			.OnTest    = []() { std::exit(0); },
-			.Hidden    = true,
-			.WillCrash = true,
-		});
-	Testing::Test(
-		"Skipped",
-		{
-			.OnTest = []() {
-				Testing::Fail();
-			},
-			.Dependencies = { "Testing.Hidden" },
-			.ExpectSkip   = true,
-		});
-	Testing::Test(
-		"Success with crashing OnPostTest",
-		{
-			.OnTest     = []() { Testing::Success(); },
-			.OnPostTest = []() { assert(false); },
-			.WillCrash  = true,
-		});
+	Testing::Test("Hidden")
+		.OnTest([]() { std::exit(0); })
+		.WillCrash()
+		.Hide();
+	Testing::Test("Skipped")
+		.OnTest([]() { Testing::Fail(); })
+		.Dependencies("Testing.Hidden")
+		.ExpectSkip();
+	Testing::Test("Success with crashing OnPostTest")
+		.OnTest([]() { Testing::Success(); })
+		.OnPostTest([]() { assert(false); })
+		.WillCrash();
 	Testing::PopGroup();
 
 	UTFTests();
