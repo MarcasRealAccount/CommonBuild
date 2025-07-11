@@ -24,7 +24,12 @@ end
 		warnings("Extra")
 
 		kind("StaticLib")
+if not _OPTIONS["build-pkg"] then
 		common:outDirs()
+else
+		targetdir("%{wks.location}/CommonBuild/%{cfg.buildcfg}")
+		objdir("%{wks.location}/CommonBuild/%{cfg.buildcfg}")
+end
 
 		includedirs({ "Inc/" })
 		files({
