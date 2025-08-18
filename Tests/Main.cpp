@@ -1,12 +1,15 @@
 #define TESTING_ENTRYPOINT
 #include <Testing/Testing.h>
 
-#include <iostream>
-
 #undef NDEBUG
 #include <cassert>
 
 extern void UTFTests();
+
+struct AssertType
+{
+};
+extern void Thrower();
 
 void RegisterTests()
 {
@@ -20,8 +23,17 @@ void RegisterTests()
 	Testing::Test("Exception test")
 		.OnTest([]() { throw 0; })
 		.OnException(Testing::ExpectExceptions<int>);
+	Testing::Test("Multi Exception test")
+		.OnTest([]() { throw 0.0; })
+		.OnException(Testing::ExpectExceptions<int, double>);
+	Testing::Test("Custom Exception test")
+		.OnTest([]() { throw AssertType {}; })
+		.OnException(Testing::ExpectExceptions<AssertType>);
+	Testing::Test("Custom External Exception test")
+		.OnTest([]() { Thrower(); })
+		.OnException(Testing::ExpectExceptions<AssertType>);
 	Testing::Test("Crash test")
-		.OnTest([]() { throw *(int*) 0; })
+		.OnTest([]() { throw *(volatile int*) 0; })
 		.ExpectCrash();
 	Testing::Test("Exit test")
 		.OnTest([]() { std::exit(0); })

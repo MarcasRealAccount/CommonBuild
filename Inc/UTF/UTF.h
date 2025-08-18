@@ -1,13 +1,15 @@
 #pragma once
 
-#include "Base.h"
-#include "Generic.h"
-#include "Memory/Memory.h"
-#include "SIMD.h"
+#if false
 
-#include <concepts>
-#include <string>
-#include <string_view>
+	#include "Base.h"
+	#include "Generic.h"
+	#include "Memory/Memory.h"
+	#include "SIMD.h"
+
+	#include <concepts>
+	#include <string>
+	#include <string_view>
 
 namespace UTF
 {
@@ -186,3 +188,5 @@ namespace UTF
 		return Convert<C1, C2>(std::basic_string_view<C2>(str), impl);
 	}
 } // namespace UTF
+
+#endif

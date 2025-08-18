@@ -8,11 +8,18 @@
 *.vcxproj
 *.vcxproj.*
 
+# Visual Studio Code
+/.vscode/
+
 # Vim
 *.swp
 
 # CLion
 /.idea/
+
+# Clangd
+/.cache/
+/compile_commands.json
 
 # CMake
 CMakeLists.txt

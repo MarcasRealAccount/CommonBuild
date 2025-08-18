@@ -1,4 +1,6 @@
-#include "UTF/UTF.h"
+#if false
+
+	#include "UTF/UTF.h"
 
 namespace UTF
 {
@@ -44,3 +46,5 @@ namespace UTF
 			return EImpl::Generic;
 	}
 } // namespace UTF
+
+#endif

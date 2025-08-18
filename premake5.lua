@@ -38,8 +38,6 @@ end
 		})
 		removefiles({ "*.DS_Store" })
 
-		pkgdeps({ "mimalloc" })
-
 		common:addActions()
 
 if not _OPTIONS["build-pkg"] then

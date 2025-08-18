@@ -40,7 +40,8 @@ namespace Testing
 		}
 		catch (...)
 		{
-			if (test.OnException && test.OnException())
+			std::exception_ptr ep = std::current_exception();
+			if (test.OnException && test.OnException(ep))
 				test.Result = ETestResult::Success;
 			else
 				test.Result = ETestResult::Crash;
@@ -161,7 +162,7 @@ namespace Testing
 		decimal = (uint16_t) time;
 
 		exponent += 10;
-		if (exponent < 0 || exponent >= sizeof(c_Units) - 1)
+		if (exponent < 0 || (size_t) exponent >= sizeof(c_Units) - 1)
 			unit = '?';
 		else
 			unit = c_Units[exponent];

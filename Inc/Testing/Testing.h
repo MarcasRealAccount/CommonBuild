@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <exception>
 #include <functional>
 #include <string>
 
@@ -18,11 +19,12 @@ namespace Testing
 	namespace Internal
 	{
 		template <class T>
-		bool ExpectException()
+		bool ExpectException(const std::exception_ptr& ep)
 		{
 			try
 			{
-				throw;
+				if (ep)
+					std::rethrow_exception(ep);
 			}
 			catch ([[maybe_unused]] const T& v)
 			{
@@ -57,7 +59,7 @@ namespace Testing
 	};
 
 	using TestFn             = std::function<void()>;
-	using ExceptionHandlerFn = std::function<bool()>;
+	using ExceptionHandlerFn = std::function<bool(const std::exception_ptr& ep)>;
 
 	struct TestSpec
 	{
@@ -130,14 +132,14 @@ namespace Testing
 	void Skip();
 	void Fail();
 
-	inline bool ExpectAnyException()
+	inline bool ExpectAnyException([[maybe_unused]] const std::exception_ptr& ep)
 	{
 		return true;
 	}
 	template <class... ExceptionTypes>
-	bool ExpectExceptions()
+	bool ExpectExceptions(const std::exception_ptr& ep)
 	{
-		return (false || ... || Internal::ExpectException<ExceptionTypes>());
+		return (false || ... || Internal::ExpectException<ExceptionTypes>(ep));
 	}
 } // namespace Testing
 
