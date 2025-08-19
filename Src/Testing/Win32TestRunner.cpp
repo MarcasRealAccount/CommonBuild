@@ -376,8 +376,6 @@ namespace Testing
 				fSuccess        = WriteFile(hPipe, &packet, sizeof(packet), &read, nullptr);
 				if (!fSuccess)
 					break;
-				if (test < g_State->Tests.size() && g_State->Tests[test].OnPostTest)
-					g_State->Tests[test].OnPostTest();
 
 				packet   = { .Type = ReadyPacket };
 				fSuccess = WriteFile(hPipe, &packet, sizeof(packet), &read, nullptr);

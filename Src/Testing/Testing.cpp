@@ -46,6 +46,9 @@ namespace Testing
 			else
 				test.Result = ETestResult::Crash;
 		}
+		
+		if (test.OnPostTest)
+			test.OnPostTest();
 	}
 
 	void RunTimedTest(TestState& test)
@@ -273,8 +276,6 @@ namespace Testing
 
 		if (test.WillCrash)
 			return;
-		if (test.OnPostTest)
-			test.OnPostTest();
 
 		if (test.Timed && test.Result == ETestResult::Success)
 			RunTimedTest(test);

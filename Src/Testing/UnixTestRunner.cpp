@@ -293,8 +293,6 @@ namespace Testing
 				packet.Data2    = test < g_State->Tests.size() ? *(uint64_t*) &g_State->Tests[test].Time : 0;
 				if (!WritePacket(STDOUT_FILENO, packet))
 					break;
-				if (test < g_State->Tests.size() && g_State->Tests[test].OnPostTest)
-					g_State->Tests[test].OnPostTest();
 
 				packet = { .Type = ReadyPacket };
 				if (!WritePacket(STDOUT_FILENO, packet))
