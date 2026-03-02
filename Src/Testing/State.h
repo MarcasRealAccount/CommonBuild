@@ -11,12 +11,18 @@
 
 namespace Testing
 {
+	struct TestResult
+	{
+		std::string Location;
+		ETestResult Result = ETestResult::NotRun;
+	};
+
 	struct TestState
 	{
 		std::string Name;
-		size_t      Group  = ~size_t(0);
-		ETestResult Result = ETestResult::NotRun;
-		double      Time   = 0.0;
+		size_t      Group = ~size_t(0);
+		double      Time  = 0.0;
+		TestResult  Result;
 
 		TestFn             OnPreTest   = nullptr;
 		TestFn             OnTest      = nullptr;
@@ -29,8 +35,10 @@ namespace Testing
 		bool        Hidden         = false;
 		bool        WillCrash      = false;
 
-		bool   Timed        = false;
-		double BaselineTime = 0.0;
+		bool        Timed        = false;
+		double      BaselineTime = 0.0;
+		std::string TimeUnit;
+		size_t      BaseCount;
 	};
 
 	struct Group
@@ -60,6 +68,8 @@ namespace Testing
 
 		size_t IntCurOutputGroup = ~size_t(0);
 		size_t IntCurGroupDepth  = 0;
+
+		double TimedMaxDuration = 2.0;
 	};
 
 	extern State* g_State;

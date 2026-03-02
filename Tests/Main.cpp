@@ -62,7 +62,7 @@ void RegisterTests()
 	Testing::Test("Success with crashing OnPostTest")
 		.OnTest([]() { Testing::Success(); })
 		.OnPostTest([]() { assert(false); })
-		.WillCrash();
+		.ExpectCrash();
 	Testing::PopGroup();
 
 	UTFTests();

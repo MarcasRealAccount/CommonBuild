@@ -15,16 +15,19 @@ namespace Testing
 
 	void RunTest(TestState& test)
 	{
-		if (test.Result != ETestResult::NotRun)
+		if (test.Result.Result != ETestResult::NotRun)
 			return;
 
-#if !SUPPORT_SEPARATE_TEST_RUNNER
-		if (test.ExpectedResult == ETestResult::Crash || test.WillCrash)
-		{
-			test.Result = ETestResult::Fail;
-			return;
-		}
+#if SUPPORT_SEPARATE_TEST_RUNNER
+		if (g_State->Flags & c_NoTestRunner)
 #endif
+		{
+			if (test.ExpectedResult == ETestResult::Crash || test.WillCrash)
+			{
+				test.Result.Result = ETestResult::Fail;
+				return;
+			}
+		}
 
 		if (test.OnPreTest)
 			test.OnPreTest();
@@ -32,21 +35,30 @@ namespace Testing
 		try
 		{
 			test.OnTest();
-			test.Result = ETestResult::Success;
+			test.Result.Result = ETestResult::Success;
 		}
-		catch (ETestResult result)
+		catch (TestResult result)
 		{
-			test.Result = result;
+			switch (result.Result)
+			{
+			case ETestResult::Skip:
+			case ETestResult::Fail:
+				test.Result = result;
+				break;
+			default:
+				test.Result.Result = result.Result;
+				break;
+			}
 		}
 		catch (...)
 		{
 			std::exception_ptr ep = std::current_exception();
 			if (test.OnException && test.OnException(ep))
-				test.Result = ETestResult::Success;
+				test.Result.Result = ETestResult::Success;
 			else
-				test.Result = ETestResult::Crash;
+				test.Result.Result = ETestResult::Crash;
 		}
-		
+
 		if (test.OnPostTest)
 			test.OnPostTest();
 	}
@@ -68,8 +80,8 @@ namespace Testing
 
 		size_t iters     = 0;
 		auto   begin     = Clock::now();
-		auto   targetEnd = begin + 2s;
-		auto   cur       = Clock::now();
+		auto   targetEnd = begin + (g_State->TimedMaxDuration * 1s);
+		auto   cur       = begin;
 		while (cur < targetEnd && iters < 1000)
 		{
 			test.OnTest();
@@ -176,7 +188,7 @@ namespace Testing
 		if (test.Hidden)
 			return;
 
-		if (test.Result == ETestResult::Success)
+		if (test.Result.Result == ETestResult::Success)
 		{
 			auto cur = test.Group;
 			while (cur != ~size_t(0))
@@ -191,7 +203,7 @@ namespace Testing
 			g_State->IntCurOutputGroup = test.Group;
 		}
 		std::string_view resultStr;
-		switch (test.Result)
+		switch (test.Result.Result)
 		{
 		case ETestResult::Success: resultStr = "  \033[32mSuccess\033[39m"; break;
 		case ETestResult::Skip: resultStr = "     \033[33mSkip\033[39m"; break;
@@ -200,43 +212,72 @@ namespace Testing
 		case ETestResult::TimedOut: resultStr = "\033[34mTimed Out\033[39m"; break;
 		default: resultStr = "     \033[31mFAIL\033[39m"; break;
 		}
-		if (test.Timed && test.Result == ETestResult::Success && test.Time >= 0.0)
+		if (test.Result.Result != ETestResult::Fail)
 		{
-			char     timeUnit;
-			uint16_t timeWhole;
-			uint16_t timeDecimal;
-			PrettyFormatTime(test.Time, timeUnit, timeWhole, timeDecimal);
-			if (test.BaselineTime > 0.0)
+			if (test.Timed && test.Result.Result == ETestResult::Success && test.Time >= 0.0)
 			{
-				char timeColorI;
-				if (test.Time < test.BaselineTime)
-					timeColorI = '2';
-				else if (test.Time > test.BaselineTime * 1.2)
-					timeColorI = '1';
-				else
-					timeColorI = '3';
+				char     timeUnit;
+				uint16_t timeWhole;
+				uint16_t timeDecimal;
+				PrettyFormatTime(test.Time, timeUnit, timeWhole, timeDecimal);
+				if (test.BaselineTime > 0.0)
+				{
+					char timeColorI;
+					if (test.Time < test.BaselineTime)
+						timeColorI = '2';
+					else if (test.Time > test.BaselineTime * 1.2)
+						timeColorI = '1';
+					else
+						timeColorI = '3';
 
-				char     baselineUnit;
-				uint16_t baselineWhole;
-				uint16_t baselineDecimal;
-				PrettyFormatTime(test.BaselineTime, baselineUnit, baselineWhole, baselineDecimal);
-				std::cout << std::format("{:{}}{} (\033[3{}m{:3}.{:03}{}s/{:3}.{:03}{}s\033[39m): {}\n", "", 2 * g_State->IntCurGroupDepth, resultStr, timeColorI, timeWhole, timeDecimal, timeUnit, baselineWhole, baselineDecimal, baselineUnit, test.Name);
+					char     baselineUnit;
+					uint16_t baselineWhole;
+					uint16_t baselineDecimal;
+					PrettyFormatTime(test.BaselineTime, baselineUnit, baselineWhole, baselineDecimal);
+					if (test.BaseCount > 0)
+					{
+						char     speedUnit;
+						uint16_t speedWhole;
+						uint16_t speedDecimal;
+						PrettyFormatTime(test.BaseCount / test.Time, speedUnit, speedWhole, speedDecimal);
+						std::cout << std::format("{:{}}{} (\033[3{}m{:3}.{:03}{}s/{:3}.{:03}{}s => {:3}.{:03}{}{}/s\033[39m): {}\n", "", 2 * g_State->IntCurGroupDepth, resultStr, timeColorI, timeWhole, timeDecimal, timeUnit, baselineWhole, baselineDecimal, baselineUnit, speedWhole, speedDecimal, speedUnit, test.TimeUnit, test.Name);
+					}
+					else
+					{
+						std::cout << std::format("{:{}}{} (\033[3{}m{:3}.{:03}{}s/{:3}.{:03}{}s\033[39m): {}\n", "", 2 * g_State->IntCurGroupDepth, resultStr, timeColorI, timeWhole, timeDecimal, timeUnit, baselineWhole, baselineDecimal, baselineUnit, test.Name);
+					}
+				}
+				else if (test.BaseCount > 0)
+				{
+					char     speedUnit;
+					uint16_t speedWhole;
+					uint16_t speedDecimal;
+					PrettyFormatTime(test.BaseCount / test.Time, speedUnit, speedWhole, speedDecimal);
+					std::cout << std::format("{:{}}{} (\033[32m{:3}.{:03}{}s => {:3}.{:03}{}{}/s\033[39m): {}\n", "", 2 * g_State->IntCurGroupDepth, resultStr, timeWhole, timeDecimal, timeUnit, speedWhole, speedDecimal, speedUnit, test.TimeUnit, test.Name);
+				}
+				else
+				{
+					std::cout << std::format("{:{}}{} (\033[32m{:3}.{:03}{}s\033[39m): {}\n", "", 2 * g_State->IntCurGroupDepth, resultStr, timeWhole, timeDecimal, timeUnit, test.Name);
+				}
 			}
 			else
 			{
-				std::cout << std::format("{:{}}{} (\033[32m{:3}.{:03}{}s\033[39m): {}\n", "", 2 * g_State->IntCurGroupDepth, resultStr, timeWhole, timeDecimal, timeUnit, test.Name);
+				if (g_State->Flags & c_Compact)
+					return;
+
+				std::cout << std::format("{:{}}{}: {}\n", "", 2 * g_State->IntCurGroupDepth, resultStr, test.Name);
 			}
 		}
 		else
 		{
-			std::cout << std::format("{:{}}{}: {}\n", "", 2 * g_State->IntCurGroupDepth, resultStr, test.Name);
+			std::cout << std::format("{:{}}{}: {} ({})\n", "", 2 * g_State->IntCurGroupDepth, resultStr, test.Name, test.Result.Location);
 		}
 	}
 
-#if !SUPPORT_SEPARATE_TEST_RUNNER
+	// #if !SUPPORT_SEPARATE_TEST_RUNNER
 	static void RunTestRecursive(TestState& test)
 	{
-		if (test.Result != ETestResult::NotRun)
+		if (test.Result.Result != ETestResult::NotRun)
 			return;
 
 		bool skip = false;
@@ -252,9 +293,9 @@ namespace Testing
 
 			auto& depTest = g_State->Tests[itr->second];
 			RunTestRecursive(depTest);
-			if (depTest.ExpectedResult == depTest.Result)
-				depTest.Result = ETestResult::Success;
-			skip = skip || (depTest.Result != ETestResult::Success);
+			if (depTest.ExpectedResult == depTest.Result.Result)
+				depTest.Result.Result = ETestResult::Success;
+			skip = skip || (depTest.Result.Result != ETestResult::Success);
 		}
 
 		if (!test.Hidden)
@@ -269,7 +310,7 @@ namespace Testing
 
 		if (skip)
 		{
-			test.Result = ETestResult::Skip;
+			test.Result.Result = ETestResult::Skip;
 			return;
 		}
 		RunTest(test);
@@ -277,14 +318,14 @@ namespace Testing
 		if (test.WillCrash)
 			return;
 
-		if (test.Timed && test.Result == ETestResult::Success)
+		if (test.Timed && test.Result.Result == ETestResult::Success)
 			RunTimedTest(test);
 	}
 
 	static void RunTests()
 	{
 		for (auto failed : g_State->IntTestsFailed)
-			g_State->Tests[failed].Result = ETestResult::Fail;
+			g_State->Tests[failed].Result.Result = ETestResult::Fail;
 
 		for (size_t i = g_State->IntTestsStart; i < g_State->Tests.size(); ++i)
 		{
@@ -293,17 +334,17 @@ namespace Testing
 			RunTestRecursive(test);
 			if (test.ExpectedResult != ETestResult::NotRun)
 			{
-				if (test.ExpectedResult == test.Result)
+				if (test.ExpectedResult == test.Result.Result)
 				{
-					test.Result = ETestResult::Success;
+					test.Result.Result = ETestResult::Success;
 				}
 				else
 				{
-					switch (test.Result)
+					switch (test.Result.Result)
 					{
 					case ETestResult::Success:
 					case ETestResult::Skip:
-					case ETestResult::Fail: test.Result = ETestResult::Fail; break;
+					case ETestResult::Fail: test.Result.Result = ETestResult::Fail; break;
 					default: break;
 					}
 				}
@@ -311,7 +352,7 @@ namespace Testing
 			OutputTestResult(test);
 		}
 	}
-#endif
+	// #endif
 
 	bool SupportsCrashHandling()
 	{
@@ -326,6 +367,10 @@ namespace Testing
 			std::string_view arg = argv[i];
 			if (arg.starts_with("__int_test_runner="))
 				flags |= c_IntTestRunner;
+			else if (arg == "--compact")
+				flags |= c_Compact;
+			else if (arg == "--no-test-runner")
+				flags |= c_NoTestRunner;
 		}
 		return flags;
 	}
@@ -351,6 +396,11 @@ namespace Testing
 				uint64_t id        = std::strtoull(arg.substr(18).data(), nullptr, 10);
 				g_State->IntTestID = id;
 			}
+			else if (arg.starts_with("--timed-max-duration="))
+			{
+				double timedMaxDuration   = std::strtod(arg.substr(22).data(), nullptr);
+				g_State->TimedMaxDuration = timedMaxDuration;
+			}
 		}
 	}
 
@@ -360,12 +410,14 @@ namespace Testing
 			std::exit(1);
 
 #if SUPPORT_SEPARATE_TEST_RUNNER
-		if (g_State->Flags & c_IntTestRunner)
+		if (g_State->Flags & c_NoTestRunner)
+#endif
+			RunTests();
+#if SUPPORT_SEPARATE_TEST_RUNNER
+		else if (g_State->Flags & c_IntTestRunner)
 			RunTestRunner();
 		else
 			CreateTestRunner();
-#else
-		RunTests();
 #endif
 		OutputGroupChange(g_State->IntCurOutputGroup, ~size_t(0));
 
@@ -407,9 +459,10 @@ namespace Testing
 		return *this;
 	}
 
-	TestSpec& TestSpec::OnTest(TestFn&& onTest)
+	TestSpec& TestSpec::OnTest(TestFn&& onTest, const std::source_location& loc)
 	{
-		((TestState*) this)->OnTest = std::move(onTest);
+		((TestState*) this)->OnTest          = std::move(onTest);
+		((TestState*) this)->Result.Location = std::format("{}:{}", loc.file_name(), loc.line());
 		return *this;
 	}
 
@@ -434,6 +487,8 @@ namespace Testing
 	TestSpec& TestSpec::ExpectResult(ETestResult result)
 	{
 		((TestState*) this)->ExpectedResult = result;
+		if (result == ETestResult::Crash)
+			WillCrash();
 		return *this;
 	}
 
@@ -456,6 +511,14 @@ namespace Testing
 		return *this;
 	}
 
+	TestSpec& TestSpec::TimeUnit(std::string_view unit, size_t baseCount)
+	{
+		((TestState*) this)->Timed     = true;
+		((TestState*) this)->TimeUnit  = unit;
+		((TestState*) this)->BaseCount = baseCount;
+		return *this;
+	}
+
 	TestSpec& Test(std::string name)
 	{
 		assert(g_State && "Testing::Test() must be called between Testing::Begin() and Testing::End()");
@@ -465,9 +528,8 @@ namespace Testing
 		auto& test = g_State->Tests.emplace_back();
 
 		test = TestState {
-			.Name   = std::move(name),
-			.Group  = g_State->GroupHierarchy.empty() ? ~size_t(0) : g_State->GroupHierarchy.back(),
-			.Result = ETestResult::NotRun
+			.Name  = std::move(name),
+			.Group = g_State->GroupHierarchy.empty() ? ~size_t(0) : g_State->GroupHierarchy.back()
 		};
 
 		std::string fullName = g_State->IntFullGroupName;
@@ -478,24 +540,30 @@ namespace Testing
 		return *(TestSpec*) &test;
 	}
 
-	void Expect(bool expectation)
+	void Expect(bool expectation, const std::source_location& loc)
 	{
 		if (!expectation)
-			Fail();
+			Fail(loc);
 	}
 
 	void Success()
 	{
-		throw ETestResult::Success;
+		throw TestResult { .Result = ETestResult::Success };
 	}
 
-	void Skip()
+	void Skip(const std::source_location& loc)
 	{
-		throw ETestResult::Skip;
+		throw TestResult {
+			.Location = std::format("{}:{}", loc.file_name(), loc.line()),
+			.Result   = ETestResult::Skip
+		};
 	}
 
-	void Fail()
+	void Fail(const std::source_location& loc)
 	{
-		throw ETestResult::Fail;
+		throw TestResult {
+			.Location = std::format("{}:{}", loc.file_name(), loc.line()),
+			.Result   = ETestResult::Fail
+		};
 	}
 } // namespace Testing

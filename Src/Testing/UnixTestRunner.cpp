@@ -95,16 +95,28 @@ namespace Testing
 		return written == sizeof(packet);
 	}
 
+	static bool WriteLocation(int fd, uint16_t length, const char* buffer)
+	{
+		ssize_t written = ::write(fd, buffer, length);
+		return written == length;
+	}
+
 	static bool ReadPacket(int fd, Packet& packet)
 	{
 		ssize_t r = ::read(fd, &packet, sizeof(packet));
 		return r == sizeof(Packet) && packet.Cookie == PacketCookie;
 	}
 
+	static bool ReadLocation(int fd, uint16_t length, char* buffer)
+	{
+		ssize_t r = ::read(fd, buffer, length);
+		return r == length;
+	}
+
 	static bool RunTestRecursive(size_t testID, int sockfd, pid_t child)
 	{
 		auto& test = g_State->Tests[testID];
-		if (test.Result != ETestResult::NotRun)
+		if (test.Result.Result != ETestResult::NotRun)
 			return true;
 
 		bool skip = false;
@@ -118,9 +130,9 @@ namespace Testing
 			}
 
 			RunTestRecursive(itr->second, sockfd, child);
-			if (g_State->Tests[itr->second].ExpectedResult == g_State->Tests[itr->second].Result)
-				g_State->Tests[itr->second].Result = ETestResult::Success;
-			skip = skip || (g_State->Tests[itr->second].Result != ETestResult::Success);
+			if (g_State->Tests[itr->second].ExpectedResult == g_State->Tests[itr->second].Result.Result)
+				g_State->Tests[itr->second].Result.Result = ETestResult::Success;
+			skip = skip || (g_State->Tests[itr->second].Result.Result != ETestResult::Success);
 		}
 
 		if (!test.Hidden)
@@ -135,7 +147,7 @@ namespace Testing
 
 		if (skip)
 		{
-			test.Result = ETestResult::Skip;
+			test.Result.Result = ETestResult::Skip;
 			return true;
 		}
 
@@ -146,12 +158,18 @@ namespace Testing
 
 		if (!ReadPacket(sockfd, packet) || packet.Type != ResultPacket)
 		{
-			g_State->Tests[testID].Result = ETestResult::Crash;
+			g_State->Tests[testID].Result.Result = ETestResult::Crash;
 			return false;
 		}
 
-		g_State->Tests[testID].Result = (ETestResult) packet.Data1[0];
-		g_State->Tests[testID].Time   = *(double*) &packet.Data2;
+		g_State->Tests[testID].Result.Result = (ETestResult) packet.Data1[0];
+		g_State->Tests[testID].Time          = *(double*) &packet.Data2;
+		uint16_t    locLength                = packet.Data1[1] | (packet.Data1[2] << 8);
+		std::string location;
+		location.resize(locLength);
+		if (!ReadLocation(sockfd, locLength, location.data()))
+			return false;
+		g_State->Tests[testID].Result.Location = std::move(location);
 
 		if (!ReadPacket(sockfd, packet) || packet.Type != ReadyPacket)
 			return false;
@@ -230,17 +248,17 @@ namespace Testing
 				auto& test = g_State->Tests[currentTest];
 				if (test.ExpectedResult != ETestResult::NotRun)
 				{
-					if (test.ExpectedResult == test.Result)
+					if (test.ExpectedResult == test.Result.Result)
 					{
-						test.Result = ETestResult::Success;
+						test.Result.Result = ETestResult::Success;
 					}
 					else
 					{
-						switch (test.Result)
+						switch (test.Result.Result)
 						{
 						case ETestResult::Success:
 						case ETestResult::Skip:
-						case ETestResult::Fail: test.Result = ETestResult::Fail; break;
+						case ETestResult::Fail: test.Result.Result = ETestResult::Fail; break;
 						default: break;
 						}
 					}
@@ -285,13 +303,18 @@ namespace Testing
 				if (test < g_State->Tests.size())
 				{
 					RunTest(g_State->Tests[test]);
-					if (g_State->Tests[test].Timed && g_State->Tests[test].Result == ETestResult::Success)
+					if (g_State->Tests[test].Timed && g_State->Tests[test].Result.Result == ETestResult::Success)
 						RunTimedTest(g_State->Tests[test]);
 				}
 				packet          = { .Type = ResultPacket };
-				packet.Data1[0] = (uint8_t) (test < g_State->Tests.size() ? g_State->Tests[test].Result : ETestResult::NotRun);
+				packet.Data1[0] = (uint8_t) (test < g_State->Tests.size() ? g_State->Tests[test].Result.Result : ETestResult::NotRun);
+				packet.Data1[1] = g_State->Tests[test].Result.Location.size() & 0xFF;
+				packet.Data1[2] = (g_State->Tests[test].Result.Location.size() >> 8) & 0xFF;
 				packet.Data2    = test < g_State->Tests.size() ? *(uint64_t*) &g_State->Tests[test].Time : 0;
 				if (!WritePacket(STDOUT_FILENO, packet))
+					break;
+
+				if (!WriteLocation(STDOUT_FILENO, g_State->Tests[test].Result.Location.size() & 0xFFFF, g_State->Tests[test].Result.Location.data()))
 					break;
 
 				packet = { .Type = ReadyPacket };

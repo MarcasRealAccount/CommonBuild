@@ -12,6 +12,7 @@
 
 #include <exception>
 #include <functional>
+#include <source_location>
 #include <string>
 
 namespace Testing
@@ -25,6 +26,7 @@ namespace Testing
 			{
 				if (ep)
 					std::rethrow_exception(ep);
+				return false;
 			}
 			catch ([[maybe_unused]] const T& v)
 			{
@@ -37,7 +39,9 @@ namespace Testing
 		}
 	} // namespace Internal
 
+	static constexpr uint64_t c_Compact       = 0x0000'0000'0000'0001;
 	static constexpr uint64_t c_IntTestRunner = 0x8000'0000'0000'0000;
+	static constexpr uint64_t c_NoTestRunner  = 0x4000'0000'0000'0000;
 
 	bool     SupportsCrashHandling();
 	uint64_t GetFlagsForArgs(size_t argc, const char* const* argv);
@@ -64,7 +68,7 @@ namespace Testing
 	struct TestSpec
 	{
 		TestSpec& OnPreTest(TestFn&& onPreTest);
-		TestSpec& OnTest(TestFn&& onTest);
+		TestSpec& OnTest(TestFn&& onTest, const std::source_location& loc = std::source_location::current());
 		TestSpec& OnPostTest(TestFn&& onPostTest);
 		TestSpec& OnException(ExceptionHandlerFn&& onException);
 		TestSpec& Dependencies(std::vector<std::string> dependencies);
@@ -82,6 +86,7 @@ namespace Testing
 		TestSpec& WillCrash();
 
 		TestSpec& Time(double baselineTime = 0.0);
+		TestSpec& TimeUnit(std::string_view unit, size_t baseCount);
 	};
 
 	struct TestDesc
@@ -97,16 +102,18 @@ namespace Testing
 		bool Hidden      = false;
 		bool WillCrash   = false;
 
-		bool   Timed        = false;
-		double BaselineTime = 0.0;
+		bool        Timed        = false;
+		double      BaselineTime = 0.0;
+		std::string TimeUnit;
+		size_t      BaseCount = 0;
 	};
 
 	TestSpec&        Test(std::string name);
-	inline TestSpec& Test(std::string name, TestDesc desc)
+	inline TestSpec& Test(std::string name, TestDesc desc, const std::source_location& loc = std::source_location::current())
 	{
 		auto& spec = Test(std::move(name))
 						 .OnPreTest(std::move(desc.OnPreTest))
-						 .OnTest(std::move(desc.OnTest))
+						 .OnTest(std::move(desc.OnTest), loc)
 						 .OnPostTest(std::move(desc.OnPostTest))
 						 .OnException(std::move(desc.OnException))
 						 .Dependencies(std::move(desc.Dependencies));
@@ -120,6 +127,8 @@ namespace Testing
 			spec.WillCrash();
 		if (desc.Timed)
 			spec.Time(desc.BaselineTime);
+		if (!desc.TimeUnit.empty())
+			spec.TimeUnit(desc.TimeUnit, desc.BaseCount);
 		return spec;
 	}
 	inline TestSpec& Test(std::string name, TestFn&& onTest)
@@ -127,10 +136,10 @@ namespace Testing
 		return Test(name).OnTest(std::move(onTest));
 	}
 
-	void Expect(bool expectation);
+	void Expect(bool expectation, const std::source_location& loc = std::source_location::current());
 	void Success();
-	void Skip();
-	void Fail();
+	void Skip(const std::source_location& loc = std::source_location::current());
+	void Fail(const std::source_location& loc = std::source_location::current());
 
 	inline bool ExpectAnyException([[maybe_unused]] const std::exception_ptr& ep)
 	{
